@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+runs/
+profile/passenger.yaml
+config.local.yaml
+tmp/
+*.egg-info/
+test/browser-artifacts/
