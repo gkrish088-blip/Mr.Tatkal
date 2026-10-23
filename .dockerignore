@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+!.env.example
+.venv
+data
+runs
+workspace
+test
+tests
+tmp
+profile/passenger.yaml
+config.local.yaml
+__pycache__
+*.egg-info

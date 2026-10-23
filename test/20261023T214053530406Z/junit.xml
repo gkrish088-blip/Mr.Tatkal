@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="12" time="15.892" timestamp="2026-10-24T03:10:54.123026+05:30" hostname="LAPTOP-G3OBD8SU"><testcase classname="tests.web.test_gui" name="test_gui_local_ticket_and_schedule_controls" time="10.201" /><testcase classname="tests.web.test_gui" name="test_managed_browser_cookies_survive_restart" time="0.893" /><testcase classname="tests.web.test_gui" name="test_gui_general_agent_uses_server_provider" time="2.665"><failure message="AssertionError: assert 'COMPLETED' in 'STANDBY'">gui_server = ('http://127.0.0.1:53306', Settings(data_dir=WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-30/...wser_hosts=('localhost', '127.0.0.1', '::1'), desktop_enabled=False, max_steps=100, max_seconds=90, provider='claude'))
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000020FC0A2B530&gt;
+
+    async def test_gui_general_agent_uses_server_provider(gui_server,monkeypatch):
+        base,cfg=gui_server
+        canary='fixture-server-owned-claude-canary'
+        monkeypatch.setenv('ANTHROPIC_API_KEY',canary)
+        monkeypatch.setenv('CLAUDE_BASE_URL',base+'/fixture')
+        monkeypatch.delenv('DEEPSEEK_API_KEY',raising=False)
+        async with async_playwright() as p:
+            browser=await p.chromium.launch(headless=True)
+            try:
+                page=await browser.new_page(viewport={'width':1360,'height':950})
+                await page.goto(base)
+                await page.locator('#goal').fill('Create gui-note.txt with a short note in the workspace.')
+                await page.locator('#run-button').click()
+                deadline=time.monotonic()+20
+                while time.monotonic()&lt;deadline:
+                    if 'COMPLETED' in await page.locator('#live-badge').inner_text():break
+                    await asyncio.sleep(.2)
+                assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
+                assert (cfg.data_dir/'workspace/gui-note.txt').read_text()=='Written through the general agent GUI.'
+                assert canary not in await page.content()
+                async with httpx.AsyncClient() as client:
+                    status=await client.get(base+'/api/status');assert canary not in status.text
+                await page.reload()
+                await page.locator('#recent-list .session-row').wait_for()
+&gt;               assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
+E               AssertionError: assert 'COMPLETED' in 'STANDBY'
+
+tests\web\test_gui.py:144: AssertionError</failure></testcase><testcase classname="tests.web.test_server" name="test_server_demo_sessions_persist_and_no_key_required" time="0.233" /><testcase classname="tests.web.test_server" name="test_auth_csrf_and_credential_non_disclosure" time="0.075" /><testcase classname="tests.web.test_server" name="test_schedule_cron_timezone_pause_resume_and_persistence" time="0.121" /><testcase classname="tests.web.test_server" name="test_due_schedule_queues_exactly_once" time="0.294" /><testcase classname="tests.web.test_server" name="test_restart_does_not_repeat_uncertain_action" time="0.149" /><testcase classname="tests.web.test_server" name="test_server_owned_provider_selection" time="0.003" /><testcase classname="tests.web.test_server" name="test_cron_recurrence_keeps_india_timezone" time="0.027" /><testcase classname="tests.web.test_server" name="test_queue_serialization_and_cancelled_task_not_executed" time="0.293" /><testcase classname="tests.web.test_server" name="test_queued_session_is_recovered_after_restart" time="0.165" /></testsuite></testsuites>

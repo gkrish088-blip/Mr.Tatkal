@@ -2,6 +2,9 @@
 import asyncio
 from collections import deque
 import hashlib
+import hmac
+import secrets
+import json
 from pathlib import Path
 import time
 from urllib.parse import urlsplit
@@ -58,6 +61,8 @@ class BrowserTools:
         self.artifact_dir = Path(artifact_dir)
         self.limiter = RateLimiter(max_requests)
         self._playwright = self._browser = None
+        self._owned_context = None
+        self._state_key = secrets.token_bytes(32)
         self._secret_values = set()
         self._guarded_contexts = set()
 
@@ -97,6 +102,15 @@ class BrowserTools:
             await context.route('**/*', route_request)
             self._guarded_contexts.add(id(context))
 
+    async def launch(self, profile_dir: str, headless: bool = True):
+        from playwright.async_api import async_playwright
+        self._playwright = await async_playwright().start()
+        self._owned_context = await self._playwright.chromium.launch_persistent_context(
+            user_data_dir=str(Path(profile_dir).resolve()), headless=headless, viewport={'width':1280,'height':800})
+        self.page = self._owned_context.pages[0] if self._owned_context.pages else await self._owned_context.new_page()
+        await self._guard()
+        return {'attached':True,'persistent':True}
+
     async def attach(self, cdp_url='http://127.0.0.1:9222'):
         parsed = urlsplit(cdp_url)
         if parsed.hostname not in ('localhost', '127.0.0.1', '::1'):
@@ -124,7 +138,11 @@ class BrowserTools:
         if self.page.url != 'about:blank' and not self._allowed(self.page.url):
             raise PermissionError('Current page is outside the browser allowlist')
         data = self._clean(await self.page.evaluate(SNAPSHOT_SCRIPT))
-        data['state_hash'] = hashlib.sha256(str(data).encode()).hexdigest()
+        # Masked fields still change the observed state. Use a per-browser keyed hash so
+        # low-entropy private values cannot be recovered by guessing their digest.
+        fields = await self.page.evaluate("() => [...document.querySelectorAll('input,textarea,select')].map(e => [e.name,e.value,e.checked])")
+        private_digest = hmac.new(self._state_key,json.dumps(fields).encode(),'sha256').hexdigest()
+        data['state_hash'] = hashlib.sha256((str(data)+private_digest).encode()).hexdigest()
         return data
 
     async def _ref(self, ref):
@@ -193,7 +211,7 @@ class BrowserTools:
         return await self.snapshot()
 
     async def screenshot(self):
-        await self.snapshot()
+        snapshot = await self.snapshot()
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
         path = self.artifact_dir / f'{uuid.uuid4().hex}.png'
         # Hide every form value, plus any element visibly echoing an inserted value.
@@ -202,7 +220,7 @@ class BrowserTools:
         for value in self._secret_values:
             masks.append(self.page.get_by_text(value, exact=False))
         data = await self.page.screenshot(path=str(path), mask=masks, mask_color='#202938')
-        return {'screenshot': str(path.resolve()), 'state_hash': hashlib.sha256(data).hexdigest()}
+        return {'screenshot': str(path.resolve()), 'state_hash': hashlib.sha256(data+snapshot['state_hash'].encode()).hexdigest()}
 
     async def tabs(self):
         await self._guard()
@@ -247,6 +265,9 @@ class BrowserTools:
 
     async def close(self):
         # Disconnecting Playwright does not close the operator's persistent Chrome.
+        if self._owned_context:
+            await self._owned_context.close()
+            self._owned_context = None
         if self._playwright:
             await self._playwright.stop()
             self._playwright = None

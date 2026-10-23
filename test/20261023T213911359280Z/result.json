@@ -1,0 +1,13 @@
+{
+  "command": [
+    "C:\\Users\\Krish\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+    "-m",
+    "pytest",
+    "--junitxml=C:\\Users\\Krish\\Desktop\\Mr.Tatkal\\test\\20261023T213911359280Z\\junit.xml",
+    "-q"
+  ],
+  "started": "2026-10-23T21:39:11.359703+00:00",
+  "finished": "2026-10-23T21:39:50.085721+00:00",
+  "exit_code": 0,
+  "scope": "Local tests only; browser skips and real-service limitations appear in output."
+}

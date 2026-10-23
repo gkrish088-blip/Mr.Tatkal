@@ -1,0 +1,21 @@
+services:
+  agent:
+    build: .
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      DATA_DIR: /app/data
+      SKILLS_DIR: /app/skills
+      INTERNAL_URL: http://127.0.0.1:8787
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - agent-data:/app/data
+    init: true
+    shm_size: 1gb
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+volumes:
+  agent-data:

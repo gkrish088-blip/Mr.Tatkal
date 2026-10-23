@@ -33,7 +33,7 @@ class Scheduler:
     def jobs(self):
         return json.loads(self.path.read_text(encoding="utf-8"))
 
-    def add(self, goal, when, inputs=None, cron=None):
+    def add(self, goal, when, inputs=None, cron=None, timezone_name='UTC'):
         if not goal.strip():
             raise ValueError("A scheduled goal is required")
         when = timestamp(when)
@@ -41,10 +41,12 @@ class Scheduler:
             from croniter import croniter
             if not croniter.is_valid(cron):
                 raise ValueError("Invalid cron expression")
+        from zoneinfo import ZoneInfo
+        ZoneInfo(timezone_name)
         job_id = uuid.uuid4().hex
         jobs = self.jobs()
         jobs[job_id] = dict(id=job_id, goal=goal, when=when, inputs=inputs or {}, cron=cron,
-                            status="pending", executions=0)
+                            status="pending", executions=0, timezone=timezone_name)
         atomic_json(self.path, jobs)
         return job_id
 
@@ -78,8 +80,9 @@ class Scheduler:
                 job["fired_at"] = self.now()
                 if job["cron"]:
                     from croniter import croniter
-                    # Evaluate in UTC; explicit UTC semantics avoid DST ambiguities.
-                    job["when"] = croniter(job["cron"], datetime.fromtimestamp(max(self.now(), job["when"]), timezone.utc)).get_next(float)
+                    from zoneinfo import ZoneInfo
+                    zone = ZoneInfo(job.get('timezone','UTC'))
+                    job["when"] = croniter(job["cron"], datetime.fromtimestamp(max(self.now(), job["when"]), zone)).get_next(float)
                     job["status"] = "pending"
                 else:
                     job["status"] = "done"

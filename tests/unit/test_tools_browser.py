@@ -37,10 +37,12 @@ async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
             tools = BrowserTools(page, artifact_dir=tmp_path)
             snapshot = await tools.goto(f'http://127.0.0.1:{server.server_port}')
             refs = {e['name']: e['ref'] for e in snapshot['elements']}
+            before_hash = (await tools.screenshot())['state_hash']
             await tools.type(refs['Name'], 'CANARY-SECRET')
             await tools.type(refs['Password'], 'PASSWORD-CANARY')
             snapshot = await tools.snapshot()
             assert 'CANARY-SECRET' not in str(snapshot)
+            assert before_hash != (await tools.screenshot())['state_hash']
             await tools.select(refs['Choice'], 'b')
             evidence = await tools.screenshot()
             assert len(evidence['state_hash']) == 64

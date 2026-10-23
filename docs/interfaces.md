@@ -28,3 +28,13 @@ Element refs can be stable snapshot IDs, `label:Accessible label` or `text:Visib
 Pending actions persist only a name/fingerprint. Interrupted external effects require reconciliation. Macros save a cursor after verified completion; no automatic retry of an uncertain action. Approval denial/timeout is terminal. Desktop and browser observers are optional; a run without one explicitly records missing visual evidence and cannot satisfy screenshot acceptance. HTTP models receive at most the latest two existing screenshots, with older observations summarized in context.
 
 Single-process state ownership is required. Runtime manifest checking is opt-in and refuses changed/missing listed files; the standalone freeze verifier additionally compares the tracked file set. NTP synchronization is opt-in before scheduler serve; local timing checks do not establish real-world time accuracy.
+
+## GUI server
+
+`python -m harness.web` starts the FastAPI control room on port 8787. `harness/web/settings.py` loads server-owned provider credentials from `.env` (deployment environment wins). `RunManager` queues existing RunStore states by run ID; `SessionStore` keeps metadata and trigger IDs in local SQLite. Only one task runs at a time and a process file lock protects DATA_DIR.
+
+GUI sessions and schedules are REST resources under `/api/`. A signed HttpOnly operator cookie is required when GUI_PASSWORD is set; non-loopback binding requires a strong password. Writes require X-Agent-Request and matching Origin. No model-key editing endpoint exists. Artifact serving is confined to run screenshots/replay/summary/log and excludes private state JSON.
+
+`Scheduler.add(..., timezone_name='UTC')` remains backward compatible; GUI cron jobs explicitly store an IANA timezone and compute subsequent runs in that timezone. API and scheduler mutations share a lock. A stable trigger ID deduplicates queued work across dispatch retries. Active tasks at restart become needs_reconciliation; queued tasks survive. A separate mock/gui_demo plugin supplies the isolated local test without placing booking logic in harness.
+
+Managed BrowserTools.launch(profile_dir, headless) uses persistent Chromium storage. It closes only its owned context; CDP mode still disconnects from operator Chrome. Keyed private-field digests let masked form updates change state hashes without exposing field values. Native desktop control is optional and belongs to the server machine.

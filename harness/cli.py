@@ -36,11 +36,18 @@ async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
     if config.get('models'):
         models = [HTTPModel(ModelConfig(**m)) for m in config['models']]
         model = FailoverModel(models[0], models[-1])
-    if config.get('browser', {}).get('cdp_url'):
+    if config.get('browser', {}).get('cdp_url') or config.get('browser', {}).get('mode')=='managed':
         from harness.tools.browser import BrowserTools
         bc = config['browser']
         browser = BrowserTools(allowed_hosts=bc.get('allowed_hosts'), artifact_dir=runs/state.run_id/'steps')
-        await browser.attach(bc['cdp_url'])
+        try:
+            if bc.get('mode')=='managed':
+                await browser.launch(bc['profile_dir'], bc.get('headless',True))
+            else:
+                await browser.attach(bc['cdp_url'])
+        except BaseException:
+            await browser.close()
+            raise
     from harness.handoff.channel import HumanChannel
     if config.get('telegram', {}).get('enabled'):
         from harness.handoff.telegram import TelegramTransport

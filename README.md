@@ -2,6 +2,20 @@
 
 A Python computer-use harness with skill files, a plan/act/observe/verify loop, optional browser and desktop tools, durable state, human handoff, schedule/event triggers and replayable run logs. The official problem PDF is authoritative; the supplied implementation guide drives the architecture.
 
+## GUI control room
+
+```powershell
+python -m pip install -e ".[test]"
+python -m playwright install chromium
+python -m harness.web
+```
+
+Open **http://127.0.0.1:8787**, or start the server with `start-gui.cmd` on Windows. Run tasks, view local sessions/screenshots/replays, answer human handoffs, and create one-time or timezone-aware cron jobs directly in the GUI. **Run local test** exercises a complete fictional booking and GUI approval without an LLM key.
+
+Add `ANTHROPIC_API_KEY` or `DEEPSEEK_API_KEY` to the ignored `.env`, choose `LLM_PROVIDER=claude` or `deepseek`, and restart. These are server-owned credentials; the GUI never asks users for API keys. Session metadata, browser cookies, runs and schedules stay under the ignored `data/` directory. The server includes a persistent managed Chromium browser and serializes tasks to avoid simultaneous control of one device.
+
+Docker deployment, login configuration, persistent volumes and full instructions: [docs/gui-server.md](docs/gui-server.md). A remote bind requires a strong `GUI_PASSWORD`. No production server has been deployed automatically.
+
 ## Setup on Windows
 
 ```powershell
