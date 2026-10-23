@@ -1,0 +1,27 @@
+# Copy to config.local.yaml; keep credentials in environment variables.
+workspace: workspace
+runs: runs
+skills: skills
+schedule_store: runs/schedules.json
+max_steps: 100
+max_seconds: 300
+models: []
+# models:
+#   - base_url: https://your-primary-provider/v1
+#     model: your-model
+#     key_env: PRIMARY_API_KEY
+#     protocol: chat
+#     timeout: 15
+#   - base_url: https://your-fallback-provider/v1
+#     model: your-model
+#     key_env: FALLBACK_API_KEY
+#     protocol: messages
+#     timeout: 15
+browser:
+  cdp_url: null
+  allowed_hosts: [localhost, 127.0.0.1]
+telegram:
+  enabled: false
+  token_env: TELEGRAM_BOT_TOKEN
+  chat_id: ''
+rehearsal_verified: false
