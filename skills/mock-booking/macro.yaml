@@ -1,0 +1,99 @@
+steps:
+- tool: browser_goto
+  arguments:
+    url: ${inputs.url}
+  reason: Open the fictional local booking simulator
+- tool: browser_wait_for
+  arguments:
+    text: Sign in to rail lab
+  reason: Wait for the sign-in controls
+- tool: browser_type
+  arguments:
+    ref: label:Username
+    text: demo
+  reason: Fill the fictional username
+- tool: browser_type
+  arguments:
+    ref: label:Password
+    text: demo
+  reason: Fill the fictional password
+- tool: browser_type
+  arguments:
+    ref: label:Captcha answer
+    text: TRAIN
+  reason: Fill the fictional captcha answer
+- tool: browser_click
+  arguments:
+    ref: text:Sign in to rail lab
+  reason: Submit the fictional login
+- tool: browser_wait_for
+  arguments:
+    text: Find trains
+  reason: Verify the signed-in search page
+  assert:
+    text: Find trains
+- tool: browser_type
+  arguments:
+    ref: label:Origin station code
+    text: RK
+  reason: Set the journey origin station code
+- tool: browser_type
+  arguments:
+    ref: label:Destination station code
+    text: HW
+  reason: Set the journey destination station code
+- tool: browser_type
+  arguments:
+    ref: label:Journey date
+    text: ${inputs.date}
+  reason: Set the journey journey date
+- tool: browser_click
+  arguments:
+    ref: text:Search trains
+  reason: Read all displayed fare and availability options
+- tool: browser_wait_for
+  arguments:
+    text: Train results
+  reason: Wait for the results to finish loading
+  assert:
+    text: Train results
+- tool: browser_click
+  arguments:
+    ref: text:Select Morning local
+  reason: Choose the cheapest confirmed option, breaking the fare tie by earliest
+    departure
+- tool: browser_type
+  arguments:
+    ref: label:Passenger name
+    text: ${inputs.name}
+  reason: Fill the fictional passenger passenger name
+- tool: browser_type
+  arguments:
+    ref: label:Passenger age
+    text: ${inputs.age}
+  reason: Fill the fictional passenger passenger age
+- tool: browser_type
+  arguments:
+    ref: label:Nationality
+    text: ${inputs.nationality}
+  reason: Fill the fictional passenger nationality
+- tool: browser_type
+  arguments:
+    ref: label:Mobile number
+    text: ${inputs.mobile}
+  reason: Fill the fictional passenger mobile number
+- tool: browser_select
+  arguments:
+    ref: label:Gender
+    value: ${inputs.gender}
+  reason: Set the fictional passenger gender
+- tool: browser_click
+  arguments:
+    ref: text:Continue to review
+  reason: Request the booking review without making a payment
+- tool: browser_wait_for
+  arguments:
+    text: Review journey before payment
+  reason: Verify the review checkpoint and stop before payment
+  assert:
+    text: Review journey before payment

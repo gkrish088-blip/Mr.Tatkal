@@ -1,0 +1,9 @@
+# Fictional example only. Copy to ignored passenger.yaml and replace locally.
+name: Example Passenger
+age: 28
+gender: Female
+nationality: Indian
+berth_preference: No preference
+mobile: '9000000000'
+payment_method: UPI
+# Real UPI identifier and credentials must come from secret storage, never this file.
