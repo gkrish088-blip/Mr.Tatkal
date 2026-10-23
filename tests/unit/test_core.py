@@ -107,3 +107,48 @@ async def test_budget_and_gate_prevent_action(tmp_path):
     assert not count
     eng.max_steps=0
     assert not (await eng.act(state,ToolCall('use_skill',{'name':'example'}),'Load')).ok
+
+
+async def test_action_deadline_preserves_uncertain_intent(tmp_path):
+    import asyncio
+    eng,state=engine(tmp_path)
+    async def slow(): await asyncio.sleep(1); return {}
+    eng.registry.register('slow',slow)
+    eng.max_seconds=.02
+    assert not (await eng.act(state,ToolCall('slow'),'Test bounded deadline')).ok
+    assert state.status=='needs_reconciliation'
+    assert eng.store.load(state.run_id).pending_action['name']=='slow'
+
+
+async def test_denied_handoff_stops_following_actions(tmp_path):
+    eng,state=engine(tmp_path)
+    class Denier:
+        async def ask(self,*args,**kwargs): return {'status':'replied','approved':False,'value':'deny'}
+    eng.human=Denier()
+    eng.registry.register('ask_human',eng.ask_human)
+    class Planner:
+        async def decide(self,*args):
+            return Decision('Ask before continuing',[ToolCall('ask_human',{'kind':'approve','text':'Proceed?'}),ToolCall('unsafe')])
+    eng.model=Planner()
+    count=[]
+    async def unsafe(): count.append(1); return {}
+    eng.registry.register('unsafe',unsafe)
+    assert (await eng.run(state)).status=='rejected'
+    assert not count and state.handoffs==1
+
+
+def test_pending_state_survives_process_termination(tmp_path):
+    import subprocess,sys,time
+    store=RunStore(tmp_path/'runs')
+    state=store.create('crash test')
+    code='from harness.core.run_manager import RunStore; import time; s=RunStore('+repr(str(tmp_path/'runs'))+'); r=s.load('+repr(state.run_id)+'); r.pending_action={"name":"in-flight"}; s.save(r); time.sleep(60)'
+    process=subprocess.Popen([sys.executable,'-c',code])
+    try:
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            if store.load(state.run_id).pending_action: break
+            time.sleep(.02)
+        assert store.load(state.run_id).pending_action
+    finally:
+        process.kill();process.wait(timeout=5)
+    assert store.load(state.run_id).pending_action['name']=='in-flight'

@@ -18,6 +18,9 @@ from harness.tools import install_tools
 
 
 async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
+    if config.get('freeze_manifest'):
+        from harness.integrity import verify_manifest
+        verify_manifest(config['freeze_manifest'])
     runs = Path(config.get('runs', 'runs'))
     store = RunStore(runs)
     state = store.load(run_id) if run_id else store.create(goal, inputs)
@@ -115,7 +118,11 @@ def main():
         asyncio.run(watcher.serve(dispatch_event))
     else:
         from harness.triggers.schedule import Scheduler
-        scheduler=Scheduler(config.get('schedule_store','runs/schedules.json'))
+        from harness.tools.clock import Clock
+        clock=Clock(config.get('clock',{}).get('offset_seconds',0))
+        if args.command=='serve' and config.get('clock',{}).get('ntp_server'):
+            asyncio.run(clock.synchronize(config['clock']['ntp_server']))
+        scheduler=Scheduler(config.get('schedule_store','runs/schedules.json'),clock=clock)
         if args.command=='schedule': print(scheduler.add(args.goal,args.at,{'skill':args.skill},args.cron))
         else:
             async def dispatch(goal,inputs):

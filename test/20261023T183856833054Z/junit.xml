@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.202" timestamp="2026-10-24T00:08:57.248854+05:30" hostname="LAPTOP-G3OBD8SU"><testcase classname="tests.generality.test_skill_files" name="test_new_skill_writes_runs_and_verifies_script" time="0.155" /></testsuite></testsuites>

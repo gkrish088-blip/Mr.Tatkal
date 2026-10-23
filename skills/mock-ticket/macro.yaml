@@ -1,0 +1,191 @@
+steps:
+- tool: browser_goto
+  arguments:
+    url: ${inputs.url}
+  reason: Open the fictional local booking simulator
+  assert:
+    text: Sign in to rail lab
+- tool: browser_wait_for
+  arguments:
+    text: Sign in to rail lab
+  reason: Wait for the sign-in controls
+  assert:
+    text: Sign in to rail lab
+- tool: browser_type
+  arguments:
+    ref: label:Username
+    text: demo
+  reason: Fill the fictional username
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Password
+    text: demo
+  reason: Fill the fictional password
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Captcha answer
+    text: TRAIN
+  reason: Fill the fictional captcha answer
+  assert:
+    key: typed
+    equals: true
+- tool: browser_click
+  arguments:
+    ref: text:Sign in to rail lab
+  reason: Submit the fictional login
+  assert:
+    text: Find trains
+- tool: browser_wait_for
+  arguments:
+    text: Find trains
+  reason: Verify the signed-in search page
+  assert:
+    text: Find trains
+- tool: browser_type
+  arguments:
+    ref: label:Origin station code
+    text: RK
+  reason: Set the journey origin station code
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Destination station code
+    text: HW
+  reason: Set the journey destination station code
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Journey date
+    text: ${inputs.date}
+  reason: Set the journey journey date
+  assert:
+    key: typed
+    equals: true
+- tool: browser_click
+  arguments:
+    ref: text:Search trains
+  reason: Read all displayed fare and availability options
+  assert:
+    text: Train results
+- tool: browser_wait_for
+  arguments:
+    text: Train results
+  reason: Wait for the results to finish loading
+  assert:
+    text: Train results
+- tool: browser_click
+  arguments:
+    ref: text:Select Morning local
+  reason: Choose the cheapest confirmed option, breaking the fare tie by earliest
+    departure
+  assert:
+    text: Passenger details
+- tool: browser_type
+  arguments:
+    ref: label:Passenger name
+    text: ${inputs.name}
+  reason: Fill the fictional passenger passenger name
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Passenger age
+    text: ${inputs.age}
+  reason: Fill the fictional passenger passenger age
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Nationality
+    text: ${inputs.nationality}
+  reason: Fill the fictional passenger nationality
+  assert:
+    key: typed
+    equals: true
+- tool: browser_type
+  arguments:
+    ref: label:Mobile number
+    text: ${inputs.mobile}
+  reason: Fill the fictional passenger mobile number
+  assert:
+    key: typed
+    equals: true
+- tool: browser_select
+  arguments:
+    ref: label:Gender
+    value: ${inputs.gender}
+  reason: Set the fictional passenger gender
+  assert:
+    text: Passenger details
+- tool: browser_click
+  arguments:
+    ref: text:Continue to review
+  reason: Request the booking review without making a payment
+  assert:
+    text: Review journey before payment
+- tool: browser_wait_for
+  arguments:
+    text: Review journey before payment
+  reason: Verify the review checkpoint and stop before payment
+  assert:
+    text: Review journey before payment
+- tool: browser_assert_json
+  arguments:
+    ref: css:pre
+    expected:
+      profile:
+        name: ${inputs.name}
+        age: ${inputs.age_number}
+        gender: ${inputs.gender}
+        nationality: ${inputs.nationality}
+        mobile: ${inputs.mobile}
+      origin: RK
+      destination: HW
+      date: ${inputs.date}
+      quota: TATKAL
+      train:
+        id: winner
+        total_fare: 65
+        departure: 07:15
+  reason: Verify every requested review field and cheapest confirmed fare before payment
+  assert:
+    key: matches
+    equals: true
+- tool: browser_click
+  arguments:
+    ref: text:Verify review and request test payment
+  reason: Submit the verified fictional payment request once
+  assert:
+    text: External payment approval required
+- tool: ask_human
+  arguments:
+    kind: external_approval
+    text: Approve fictional Rs 65 using the local test payment endpoint
+    timeout: 120
+  reason: Pause for the single external payment approval
+  assert:
+    key: approved
+    equals: true
+- tool: browser_click
+  arguments:
+    ref: text:Check payment status
+  reason: Verify ticket confirmation after external approval
+  assert:
+    text: Ticket confirmed
+- tool: browser_screenshot
+  arguments: {}
+  reason: Capture the masked fictional PNR ticket as evidence
+  assert:
+    text: Ticket confirmed

@@ -17,6 +17,12 @@ reservation ID; an external test driver approves with
 `POST /api/test/approve/{reservation_id}`. Then click Check payment status.
 No production handoff channel auto-approves anything.
 
+`skills/mock-ticket/macro.yaml` performs the full fictional run, including an exact
+rendered-JSON review check, the external approval handoff and PNR screenshot.
+Supply the same inputs plus integer `age_number` matching the string `age`.
+The browser integration test uses this skill end-to-end; its auto-approval transport
+exists only inside the isolated localhost test. A normal run waits for a human reply.
+
 `create_app(seed=0, scenario='M1', real_latency=False, open_at=0, clock=None,
 payment_timeout=120)` builds isolated scenarios. M2 samples seeded 1–8s latency;
 it advances a diagnostic virtual-latency counter unless `real_latency=True`.

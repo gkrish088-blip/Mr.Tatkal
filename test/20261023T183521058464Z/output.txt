@@ -1,0 +1,31 @@
+........................................................................ [ 42%]
+................................................................F....... [ 85%]
+..............s.........                                                 [100%]
+================================== FAILURES ===================================
+__________________ test_all_skills_load_without_code_changes __________________
+
+    def test_all_skills_load_without_code_changes():
+        loader=SkillLoader(ROOT/'skills')
+        for metadata in loader.index():
+            skill=loader.load(metadata['name'])
+            assert skill.body and skill.metadata['version']
+            for step in skill.macro:
+>               assert step.get('assert') or step.get('verify'), 'Every reflex action needs a checkpoint'
+E               AssertionError: Every reflex action needs a checkpoint
+E               assert (None or None)
+E                +  where None = <built-in method get of dict object at 0x000001DD45086100>('assert')
+E                +    where <built-in method get of dict object at 0x000001DD45086100> = {'tool': 'browser_goto', 'arguments': {'url': '${inputs.url}'}, 'reason': 'Open the fictional local booking simulator'}.get
+E                +  and   None = <built-in method get of dict object at 0x000001DD45086100>('verify')
+E                +    where <built-in method get of dict object at 0x000001DD45086100> = {'tool': 'browser_goto', 'arguments': {'url': '${inputs.url}'}, 'reason': 'Open the fictional local booking simulator'}.get
+
+tests\lint\test_invariants.py:18: AssertionError
+============================== warnings summary ===============================
+..\..\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\testclient.py:1
+  C:\Users\Krish\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\unit\test_tools.py:39: Host does not grant symlink privilege
+FAILED tests/lint/test_invariants.py::test_all_skills_load_without_code_changes
+1 failed, 166 passed, 1 skipped, 1 warning in 21.85s

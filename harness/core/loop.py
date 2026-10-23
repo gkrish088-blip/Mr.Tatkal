@@ -33,7 +33,7 @@ class Engine:
     async def observe(self):
         if self.registry.capture:
             return await self.registry.capture()
-        return {"text": "No visual observer configured", "screenshot": None}
+        return {"observer": "unconfigured", "screenshot": None}
 
     async def act(self, state, call, reason, tier="reason", assertion=None):
         if not reason.strip():
@@ -77,8 +77,14 @@ class Engine:
             return ToolResult(False, error="Action deadline exceeded; reconcile observed state before retry")
         if call.name == "ask_human" and (result.data.get("status") == "timed_out" or (call.arguments.get("kind") in {"approve", "external_approval"} and not result.data.get("approved"))):
             result = ToolResult(False, result.data, "Human approval denied or timed out")
+            state.status = "rejected"
         after = await self.observe()
         verdict = result.ok and verify(assertion, {**result.data, **after})
+        checkpoint_deadline = min(time.monotonic() + 2, self.started + self.max_seconds)
+        while result.ok and assertion and not verdict and time.monotonic() < checkpoint_deadline:
+            await asyncio.sleep(.05)
+            after = await self.observe()
+            verdict = verify(assertion, {**result.data, **after})
         if not verdict and result.ok:
             result = ToolResult(False, result.data, "Checkpoint failed", result.state_hash)
         state.step += 1
@@ -92,7 +98,7 @@ class Engine:
         self.log.append(safe)
         state.history.append(safe)
         state.pending_action = None
-        state.status = "running"
+        state.status = "rejected" if state.status == "rejected" else "running"
         self.store.save(state)
         return result
 
@@ -127,10 +133,12 @@ class Engine:
                 break
             for call in decision.calls:
                 result = await self.act(state, call, decision.reason)
+                if state.status in {"rejected", "limit_reached", "needs_reconciliation"}:
+                    break
                 key = json.dumps(asdict(call), sort_keys=True)
                 self.failures[key] = 0 if result.ok else self.failures.get(key, 0)+1
                 observation = await self.observe()
-                digest = observation.get("state_hash") or hashlib.sha256(json.dumps(observation, sort_keys=True).encode()).hexdigest()
+                digest = observation.get("state_hash") or hashlib.sha256(json.dumps(result.data, sort_keys=True).encode()).hexdigest()
                 recent.append(digest)
                 stuck = (len(recent) >= 3 and len(set(recent[-3:])) == 1) or self.failures[key] >= 3
                 if stuck:

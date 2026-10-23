@@ -25,3 +25,9 @@ telegram:
   token_env: TELEGRAM_BOT_TOKEN
   chat_id: ''
 rehearsal_verified: false
+desktop:
+  enabled: false
+clock:
+  offset_seconds: 0
+  ntp_server: null
+freeze_manifest: null

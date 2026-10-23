@@ -39,7 +39,7 @@ class FileTools:
         finally:
             if os.path.exists(name):
                 os.unlink(name)
-        return {'path': str(target.relative_to(self.workspace)), 'characters': len(text)}
+        return {'path': target.relative_to(self.workspace).as_posix(), 'characters': len(text)}
 
     async def edit(self, path: str, old: str, new: str):
         if not old:

@@ -209,6 +209,22 @@ class BrowserTools:
         return {'tabs': [{'index': i, 'url': self._clean(p.url)}
                          for i, p in enumerate(self.page.context.pages) if self._allowed(p.url)]}
 
+    async def assert_json(self, ref: str, expected: dict):
+        """Verify a rendered JSON review against expected fields without returning private data."""
+        import json
+        locator = self.page.locator(ref[4:]) if ref.startswith('css:') else await self._ref(ref)
+        await self._guard()
+        if await locator.count() != 1:
+            raise ValueError('Review reference must match exactly one element')
+        actual = json.loads(await locator.inner_text())
+        def matches(want, got):
+            if isinstance(want, dict):
+                return isinstance(got, dict) and all(k in got and matches(v,got[k]) for k,v in want.items())
+            return want == got
+        if not matches(expected, actual):
+            raise ValueError('Rendered review does not match expected fields')
+        return {'matches': True}
+
     async def select_tab(self, index: int):
         await self._guard()
         pages = self.page.context.pages

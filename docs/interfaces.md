@@ -18,3 +18,13 @@ Tools owner provides `install_tools(registry, workspace: Path, browser=None, des
 Handoff `HumanChannel(store_path, transport=None)` async `ask(kind,text,options=None,timeout=300,**kwargs)` returns dict; `.reply(request_id,value)` returns bool, persists requests, suppress duplicates. Telegram adapter transport `.send(request)` async and polling reply interface. `Scheduler(path, clock=None)` `.add(goal, when, inputs=None, cron=None)` persistent jobs; async `.tick(dispatch)` dispatches due jobs; `.serve(dispatch)` loop. File event watcher emits run goals.
 
 Mock owner builds FastAPI mock at mock/mock_irctc/app.py with create_app(seed=0, scenario='M1', **kwargs), UI with accessible labels, JSON endpoints for isolated scenario tests. Domain logic and ranking only mock/skills, never harness/. Own tests/integration and mock skills. Agents do not commit; primary agent integrates and commits with memory notes.
+
+## Implemented macro and checkpoint contract
+
+`macro.yaml` contains a `steps` list. Each step has `tool`, `arguments`, `reason`, and `assert`. Bindings `${inputs.key}` preserve type when the whole value is a binding; bindings embedded in text become strings. Assertions support `text` substring, `url` substring, or `key` dotted path with optional `equals`. Assertions inspect the tool result merged with the current observation. UI transitions receive up to two seconds for a checkpoint before recovery. Every reflex step must have a checkpoint (lint).
+
+Element refs can be stable snapshot IDs, `label:Accessible label` or `text:Visible text`. `browser_assert_json(ref='css:pre', expected=...)` verifies a rendered JSON object against an expected subset without returning its private contents. Failed review checks stop a macro before later payment steps. The local full-ticket skill demonstrates this generic verifier; no domain rules are embedded in its implementation.
+
+Pending actions persist only a name/fingerprint. Interrupted external effects require reconciliation. Macros save a cursor after verified completion; no automatic retry of an uncertain action. Approval denial/timeout is terminal. Desktop and browser observers are optional; a run without one explicitly records missing visual evidence and cannot satisfy screenshot acceptance. HTTP models receive at most the latest two existing screenshots, with older observations summarized in context.
+
+Single-process state ownership is required. Runtime manifest checking is opt-in and refuses changed/missing listed files; the standalone freeze verifier additionally compares the tracked file set. NTP synchronization is opt-in before scheduler serve; local timing checks do not establish real-world time accuracy.

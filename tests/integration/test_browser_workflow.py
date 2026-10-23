@@ -49,7 +49,7 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             page = await chromium.new_page()
             browser = BrowserTools(page=page, artifact_dir=tmp_path/'screenshots')
             registry = ToolRegistry()
-            for method in ('goto', 'wait_for', 'type', 'click', 'select', 'snapshot', 'screenshot'):
+            for method in ('goto', 'wait_for', 'type', 'click', 'select', 'snapshot', 'screenshot', 'assert_json'):
                 registry.register('browser_'+method, getattr(browser, method))
 
             async def observe():
@@ -59,8 +59,9 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             store = RunStore(tmp_path/'runs')
             state = store.create('Rehearse one fictional ticket', {
                 'url': local_lab, 'date': '2026-10-26', 'name': 'Fictional Rider',
-                'age': '28', 'gender': 'Female', 'nationality': 'Indian', 'mobile': '9000000000'})
+                'age': '28', 'age_number': 28, 'gender': 'Female', 'nationality': 'Indian', 'mobile': '9000000000'})
             log = RunLog(tmp_path/'runs', state.run_id)
+            browser.artifact_dir = log.path/'steps'
             # The test transport is isolated here; production tools never auto-approve.
             class MockApprovalTransport:
                 async def send(self, request):
@@ -74,27 +75,23 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             human = HumanChannel(tmp_path/'handoff.json', transport=MockApprovalTransport())
             loader = SkillLoader(Path(__file__).resolve().parents[2]/'skills')
             engine = Engine(registry, store, log, loader, human=human, max_seconds=120)
-            result = await MacroRunner(engine).run(state, loader.load('mock-booking'))
+            result = await MacroRunner(engine).run(state, loader.load('mock-ticket'))
             assert result.status == 'completed', result.history[-1] if result.history else result
-            assert 'Review journey before payment' in await page.inner_text('body')
-            # Inspect the actual rendered review against all requested values before submission.
+            assert 'Ticket confirmed' in await page.inner_text('body')
+            # Independently inspect the ticket after the skill verified the pre-payment review.
             review = await page.locator('pre').inner_text()
             reviewed = json.loads(review)
             assert reviewed['profile'] == {'name': 'Fictional Rider', 'age': 28, 'gender': 'Female', 'nationality': 'Indian', 'mobile': '9000000000'}
             assert reviewed['train']['id'] == 'winner'
             assert reviewed['origin'] == 'RK' and reviewed['destination'] == 'HW'
             assert reviewed['date'] == '2026-10-26' and reviewed['quota'] == 'TATKAL'
-            assert (await engine.act(state, ToolCall('browser_click', {'ref': 'text:Verify review and request test payment'}), 'Submit the verified fictional payment request')).ok
-            await browser.wait_for(text='External payment approval required')
-            assert (await engine.act(state, ToolCall('ask_human', {'kind': 'external_approval', 'text': 'Approve fictional Rs 65 in the test transport', 'timeout': 10}), 'Pause for the single external payment approval', 'human')).ok
-            assert (await engine.act(state, ToolCall('browser_click', {'ref': 'text:Check payment status'}), 'Check for the fictional ticket after approval')).ok
-            await browser.wait_for(text='Ticket confirmed')
             assert state.handoffs == 1
             assert await page.get_by_text('MOCK000000', exact=True).count() == 1
             async with httpx.AsyncClient() as client:
                 assert (await client.get(local_lab+'/api/state')).json()['booking_count'] == 1
             log.summary(state)
             assert (log.path/'replay.html').exists()
+            assert '<img ' in (log.path/'replay.html').read_text(encoding='utf-8')
             events = [json.loads(line) for line in (log.path/'run.jsonl').read_text(encoding='utf-8').splitlines()]
             assert all(e['reason'] and e['before']['screenshot'] and e['after']['screenshot'] for e in events)
             assert all(Path(e['after']['screenshot']).exists() for e in events)

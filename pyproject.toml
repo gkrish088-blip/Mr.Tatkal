@@ -19,6 +19,9 @@ train-agent = "harness.cli:main"
 [tool.setuptools.packages.find]
 include = ["harness*", "mock*"]
 
+[tool.setuptools.package-data]
+"mock.mock_irctc" = ["*.html"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

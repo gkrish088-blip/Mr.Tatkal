@@ -7,3 +7,5 @@ Decision: implement the small contracts locally using PyYAML, croniter, httpx an
 Compatibility is limited to Markdown skill files with YAML frontmatter; we do not claim complete Hermes runtime compatibility. The local additional metadata and declarative macro format are documented in `interfaces.md`.
 
 Browser attachment follows the official [Playwright CDP documentation](https://playwright.dev/python/docs/api/class-browsertype#browser-type-connect-over-cdp). External APIs remain unverified until credentials and an operator-controlled rehearsal are available.
+
+The chat-compatible vision payload follows the official [OpenAI image-input documentation](https://developers.openai.com/api/docs/guides/images-vision?api-mode=chat): text and base64 image blocks in the user message. Provider-specific payload tests use HTTP fixtures, with no external API call or quota charge. The Messages-compatible adapter is separately fixture-tested; provider model capability and authentication must be checked during configuration.

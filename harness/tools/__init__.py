@@ -19,7 +19,7 @@ def install_tools(registry, workspace, browser=None, desktop=None):
         registry.register('file_' + name, getattr(files, name), 'Workspace-confined file ' + name)
     registry.register('clock_wait_until', clock.wait_until, 'Wait for timezone-aware timestamp')
     if browser:
-        for name in ('goto', 'snapshot', 'click', 'type', 'press', 'select', 'scroll', 'wait_for', 'screenshot', 'tabs', 'select_tab', 'download'):
+        for name in ('goto', 'snapshot', 'click', 'type', 'press', 'select', 'scroll', 'wait_for', 'screenshot', 'tabs', 'select_tab', 'download', 'assert_json'):
             registry.register('browser_' + name, getattr(browser, name), 'Browser ' + name)
         registry.register('secret', SecretTools(browser, getattr(registry, 'redactor', None)).insert,
                           'Insert a named environment/keychain secret without returning it')
