@@ -151,3 +151,31 @@ def test_review_mismatch_blocks_payment_and_nonconfirmed_train():
         payload['train_id'] = 'waitlist'
         assert client.post('/api/passenger', json=payload).status_code == 409
         assert client.get('/api/state').json()['booking_count'] == 0
+
+
+def test_general_quota_books_without_waiting_for_tatkal_window():
+    with TestClient(create_app(clock=lambda:1000,open_at=2000)) as client:
+        assert login(client)
+        search={**SEARCH,'quota':'GENERAL'}
+        assert client.post('/api/search',json=search).json()['open'] is True
+        response=client.post('/api/passenger',json={'profile':PROFILE,'train_id':'winner',
+                             'date':search['date'],'idempotency_key':'normal-one'})
+        assert response.status_code==200
+        review=response.json()
+        assert review['review']['quota']=='GENERAL'
+        assert client.post('/api/review/normal-one',json={'expected':review['review'],'digest':review['digest']}).status_code==200
+        assert client.post('/api/payment/normal-one',json={'digest':review['digest']}).status_code==200
+        assert client.get('/api/state').json()['booking_count']==0
+        assert client.post('/api/test/approve/normal-one').status_code==200
+        assert client.get('/api/ticket/normal-one').json()['ticket']['quota']=='GENERAL'
+        assert client.get('/api/state').json()['booking_count']==1
+
+
+def test_search_date_mismatch_stops_before_review_or_payment():
+    with TestClient(create_app()) as client:
+        assert login(client)
+        assert client.post('/api/search',json={**SEARCH,'quota':'GENERAL'}).status_code==200
+        response=client.post('/api/passenger',json={'profile':PROFILE,'train_id':'winner',
+                             'date':'2026-10-27','idempotency_key':'wrong-date'})
+        assert response.status_code==409
+        assert client.get('/api/state').json()['booking_count']==0

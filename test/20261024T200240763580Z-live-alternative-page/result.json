@@ -1,0 +1,10 @@
+{
+  "started": "2026-10-24T20:02:40.763971+00:00",
+  "command": "BrowserTools.launch(channel=chrome, headless=False); navigate once to https://www.bookmytrain.com/",
+  "scope": "Requested alternative: public page only, no credentials, login, booking or payment.",
+  "result": "blocked_before_login",
+  "error_type": "Error",
+  "dns_error": false,
+  "tls_error": false,
+  "finished": "2026-10-24T20:03:03.411779+00:00"
+}

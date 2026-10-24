@@ -131,6 +131,17 @@ async def test_macro_permission_denial_does_not_invoke_model_recovery(tmp_path):
     assert result.status=='blocked' and result.step==1 and result.macro_index==0
 
 
+async def test_public_type_and_forced_private_type_are_logged_appropriately(tmp_path):
+    eng,state=engine(tmp_path)
+    async def type_field(ref, text, private=True):
+        return {'typed':True,'private':ref=='password' or private}
+    eng.registry.register('browser_type',type_field)
+    await eng.act(state,ToolCall('browser_type',{'ref':'search','text':'Public query','private':False}),'Search a public term')
+    assert state.history[-1]['action']['arguments']['text']=='Public query'
+    await eng.act(state,ToolCall('browser_type',{'ref':'password','text':'PRIVATE-FORCE-CANARY','private':False}),'Fill a private field')
+    assert 'PRIVATE-FORCE-CANARY' not in eng.store._path(state.run_id).read_text()
+
+
 async def test_model_failover_and_malformed_repair(monkeypatch):
     monkeypatch.setenv('TEST_MODEL_KEY','dummy')
     calls=[]

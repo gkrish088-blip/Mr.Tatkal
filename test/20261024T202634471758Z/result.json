@@ -1,0 +1,17 @@
+{
+  "command": [
+    "C:\\Users\\Krish\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+    "-m",
+    "pytest",
+    "--junitxml=C:\\Users\\Krish\\Desktop\\Mr.Tatkal\\test\\20261024T202634471758Z\\junit.xml",
+    "-q",
+    "tests/unit/test_tools_browser.py",
+    "tests/integration/test_browser_workflow.py",
+    "tests/web/test_gui.py",
+    "tests/lint/test_invariants.py"
+  ],
+  "started": "2026-10-24T20:26:34.472121+00:00",
+  "finished": "2026-10-24T20:27:15.015579+00:00",
+  "exit_code": 1,
+  "scope": "Local tests only; browser skips and real-service limitations appear in output."
+}

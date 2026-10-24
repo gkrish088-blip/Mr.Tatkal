@@ -101,7 +101,7 @@ class Engine:
                 state.approvals.append(fingerprint)
             state.approvals.remove(fingerprint)
         redactor = getattr(self.log, "redactor", None)
-        if call.name in {"browser_type", "desktop_type_text"} and redactor:
+        if call.name in {"browser_type", "desktop_type_text"} and redactor and call.arguments.get('private', True):
             redactor.register(call.arguments.get("text"))
         state.pending_action = {"name": call.name, "fingerprint": hashlib.sha256(json.dumps(asdict(call), sort_keys=True).encode()).hexdigest()}
         state.status = "waiting_human" if call.name == 'ask_human' else "acting"
@@ -116,6 +116,8 @@ class Engine:
             state.status = "needs_reconciliation"
             self.store.save(state)
             return ToolResult(False, error="Action deadline exceeded; reconcile observed state before retry")
+        if call.name == 'browser_type' and result.data.get('private') and redactor:
+            redactor.register(call.arguments.get('text'))
         if call.name == "ask_human" and (result.data.get("status") == "timed_out" or (call.arguments.get("kind") in {"approve", "external_approval"} and not result.data.get("approved"))):
             result = ToolResult(False, result.data, "Human approval denied or timed out")
             state.status = "rejected"

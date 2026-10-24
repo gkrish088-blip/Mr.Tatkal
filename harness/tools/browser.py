@@ -34,7 +34,7 @@ class RateLimiter:
 SNAPSHOT_SCRIPT = r'''() => {
  const counts = {}, elements = [];
  const visible = e => !!(e.getClientRects().length) && getComputedStyle(e).visibility !== 'hidden';
- for (const e of document.querySelectorAll('a,button,input,select,textarea,img,canvas,[role="img"],[role="button"],[role="textbox"],[contenteditable="true"]')) {
+ for (const e of document.querySelectorAll('a,button,input,select,textarea,img,canvas,li,[role="img"],[role="button"],[role="textbox"],[role="option"],[role="gridcell"],[tabindex],[contenteditable="true"]')) {
    if (!visible(e)) continue;
    const label = e.getAttribute('aria-label') || e.getAttribute('alt') ||
      (e.labels && [...e.labels].map(x => { const copy=x.cloneNode(true); for(const c of copy.querySelectorAll('input,select,textarea')) c.remove(); return copy.textContent.trim(); }).join(' ')) ||
@@ -47,7 +47,9 @@ SNAPSHOT_SCRIPT = r'''() => {
    for (const c of key + '|' + counts[key]) { hash ^= c.charCodeAt(0); hash = Math.imul(hash, 16777619); }
    const ref = 'e' + (hash >>> 0).toString(16);
    e.setAttribute('data-harness-ref', ref);
-   elements.push({ref, role, name: label.trim().slice(0,300), disabled: !!e.disabled,
+   const rect=e.getBoundingClientRect();
+   elements.push({ref, role, name: label.trim().slice(0,300), disabled: !!e.disabled, readonly: !!e.readOnly,
+     rect: {x:rect.x,y:rect.y,width:rect.width,height:rect.height},
      options: e.tagName === 'SELECT' ? [...e.options].map(o => ({label:o.label,value:o.value})) : undefined});
  }
  return {url: location.href, title: document.title, text: document.body.innerText.slice(0,20000), elements};
@@ -65,6 +67,8 @@ class BrowserTools:
         self._state_key = secrets.token_bytes(32)
         self._secret_values = set()
         self._guarded_contexts = set()
+        self._blocked_hosts = set()
+        self._network_errors = deque(maxlen=10)
 
     def _allowed(self, url):
         parsed = urlsplit(url)
@@ -98,7 +102,14 @@ class BrowserTools:
                         await self.limiter.acquire()
                     await route.continue_()
                 else:
+                    host = urlsplit(route.request.url).hostname
+                    if host:
+                        self._blocked_hosts.add(host)
                     await route.abort('blockedbyclient')
+            def record_response(response):
+                if response.status >= 400 and response.request.resource_type in ('xhr', 'fetch'):
+                    self._network_errors.append({'host':urlsplit(response.url).hostname,'status':response.status})
+            context.on('response', record_response)
             await context.route('**/*', route_request)
             self._guarded_contexts.add(id(context))
 
@@ -139,6 +150,7 @@ class BrowserTools:
         if self.page.url != 'about:blank' and not self._allowed(self.page.url):
             raise PermissionError('Current page is outside the browser allowlist')
         data = self._clean(await self.page.evaluate(SNAPSHOT_SCRIPT))
+        data['network'] = {'blocked_hosts':sorted(self._blocked_hosts), 'failed_requests':list(self._network_errors)}
         # Masked fields still change the observed state. Use a per-browser keyed hash so
         # low-entropy private values cannot be recovered by guessing their digest.
         fields = await self.page.evaluate("() => [...document.querySelectorAll('input,textarea,select')].map(e => [e.name,e.value,e.checked])")
@@ -171,16 +183,32 @@ class BrowserTools:
         await locator.click(timeout=10000)
         return await self.snapshot()
 
-    async def type(self, ref: str, text: str):
+    async def click_at(self, x: int, y: int):
+        """Click a visible custom control identified in the latest viewport screenshot."""
+        await self.snapshot()
+        viewport = await self.page.evaluate('() => ({width:innerWidth,height:innerHeight})')
+        if not 0 <= x < viewport['width'] or not 0 <= y < viewport['height']:
+            raise ValueError('Click coordinates must be within the current viewport')
+        await self.page.mouse.click(x, y)
+        return await self.snapshot()
+
+    async def type(self, ref: str, text: str, private: bool = True, sequential: bool = False):
         locator = await self._ref(ref)
-        # All typed values are excluded from snapshots and masked in screenshots.
-        self.register_secret(text)
+        # Private by default; public search terms must remain visible in suggestions.
+        # Form values themselves are still masked in every page screenshot.
+        private = private or await locator.get_attribute('type') == 'password'
+        if private:
+            self.register_secret(text)
         try:
-            await locator.fill(text, timeout=10000)
+            if sequential:
+                await locator.fill('', timeout=10000)
+                await locator.press_sequentially(text, delay=75, timeout=10000)
+            else:
+                await locator.fill(text, timeout=10000)
         except Exception:
             # Playwright errors can include a call log containing the fill value.
             raise RuntimeError('Browser fill failed; refresh the field reference') from None
-        return {'typed': True}
+        return {'typed': True, 'private': bool(private)}
 
     async def press(self, key: str):
         await self._guard()

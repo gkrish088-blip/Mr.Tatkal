@@ -169,10 +169,18 @@ steps:
   reason: Submit the verified fictional payment request once
   assert:
     text: External payment approval required
+- tool: browser_capture_element
+  arguments:
+    ref: label:Fictional payment image
+  reason: Capture the service-provided fictional payment image for the handoff
+  assert:
+    key: screenshot
 - tool: ask_human
   arguments:
     kind: external_approval
     text: Approve fictional Rs 65 using the local test payment endpoint
+    attachments:
+    - ${history.-1.result.data.screenshot}
     timeout: 120
   reason: Pause for the single external payment approval
   assert:
@@ -189,3 +197,8 @@ steps:
   reason: Capture the masked fictional PNR ticket as evidence
   assert:
     text: Ticket confirmed
+- tool: browser_print_pdf
+  arguments: {}
+  reason: Save the actual fictional ticket confirmation page as a PDF document
+  assert:
+    key: path

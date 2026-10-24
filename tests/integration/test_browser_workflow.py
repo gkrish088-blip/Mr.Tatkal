@@ -42,14 +42,15 @@ def local_lab():
 
 
 @pytest.mark.asyncio
-async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
+@pytest.mark.parametrize('quota', ['TATKAL','GENERAL'])
+async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path, quota):
     async with async_playwright() as playwright:
         chromium = await playwright.chromium.launch(headless=True)
         try:
             page = await chromium.new_page()
             browser = BrowserTools(page=page, artifact_dir=tmp_path/'screenshots')
             registry = ToolRegistry()
-            for method in ('goto', 'wait_for', 'type', 'click', 'select', 'snapshot', 'screenshot', 'assert_json'):
+            for method in ('goto', 'wait_for', 'type', 'click', 'select', 'snapshot', 'screenshot', 'capture_element', 'print_pdf', 'assert_json'):
                 registry.register('browser_'+method, getattr(browser, method))
 
             async def observe():
@@ -66,6 +67,7 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             class MockApprovalTransport:
                 async def send(self, request):
                     assert request['kind'] == 'external_approval'
+                    assert request['attachments'] and Path(request['attachments'][0]).is_file()
                     key = await page.evaluate('ctx.key')
                     async with httpx.AsyncClient() as client:
                         response = await client.post(local_lab+'/api/test/approve/'+key)
@@ -75,7 +77,13 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             human = HumanChannel(tmp_path/'handoff.json', transport=MockApprovalTransport())
             loader = SkillLoader(Path(__file__).resolve().parents[2]/'skills')
             engine = Engine(registry, store, log, loader, human=human, max_seconds=120)
-            result = await MacroRunner(engine).run(state, loader.load('mock-ticket'))
+            skill = loader.load('mock-ticket')
+            if quota=='GENERAL':
+                index=next(i for i,s in enumerate(skill.macro) if s.get('arguments',{}).get('ref')=='text:Search trains')
+                skill.macro.insert(index, {'tool':'browser_select','arguments':{'ref':'label:Quota','value':'GENERAL'},
+                                          'reason':'Choose normal reserved quota without a Tatkal wait','assert':{'text':'Find trains'}})
+                next(s for s in skill.macro if s['tool']=='browser_assert_json')['arguments']['expected']['quota']='GENERAL'
+            result = await MacroRunner(engine).run(state, skill)
             assert result.status == 'completed', result.history[-1] if result.history else result
             assert 'Ticket confirmed' in await page.inner_text('body')
             # Independently inspect the ticket after the skill verified the pre-payment review.
@@ -84,7 +92,12 @@ async def test_generic_engine_skill_macro_local_ticket(local_lab, tmp_path):
             assert reviewed['profile'] == {'name': 'Fictional Rider', 'age': 28, 'gender': 'Female', 'nationality': 'Indian', 'mobile': '9000000000'}
             assert reviewed['train']['id'] == 'winner'
             assert reviewed['origin'] == 'RK' and reviewed['destination'] == 'HW'
-            assert reviewed['date'] == '2026-10-26' and reviewed['quota'] == 'TATKAL'
+            assert reviewed['date'] == '2026-10-26' and reviewed['quota'] == quota
+            from pypdf import PdfReader
+            documents=list((log.path/'steps'/'downloads').glob('*.pdf'))
+            assert len(documents)==1
+            ticket_text=''.join(p.extract_text() for p in PdfReader(documents[0]).pages)
+            assert 'Ticket confirmed' in ticket_text and 'MOCK000000' in ticket_text and quota in ticket_text
             assert state.handoffs == 1
             assert await page.get_by_text('MOCK000000', exact=True).count() == 1
             async with httpx.AsyncClient() as client:

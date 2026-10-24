@@ -1,42 +1,30 @@
 ---
 name: irctc-search-train
-description: Find next-day Tatkal options for RK to HW
-when_to_use: Find next-day Tatkal options for RK to HW
-requires:
-- irctc-rank-fares
+description: Find confirmed options for the requested route, date and GENERAL or TATKAL quota
+when_to_use: Normal reserved or explicitly requested Tatkal search
+requires: [irctc-rank-fares]
 gates: []
-version: 0.1.0
+version: 0.2.0
 ---
-
 # Goal
-
-Find next-day Tatkal options for RK to HW.
+Compare actual train options matching the requested journey.
 
 ## Preconditions
-
-Account signed in; confirmed journey date is provided.
+Supplied origin, destination and date or approved flexible date range. GENERAL for normal reserved booking; TATKAL only on explicit request. RK to HW means Roorkee to Haridwar, not a default for unrelated journeys.
 
 ## Procedure
-
-1. Set origin RK, destination HW, journey date from inputs, and Tatkal quota.
-   Verify: Confirm the observed page or tool result matches this step before continuing.
-2. Read all train/class options with total displayed fares and availability.
-   Verify: Confirm the observed page or tool result matches this step before continuing.
-3. Use irctc-rank-fares and wait for the configured opening time before booking.
-   Verify: Confirm the observed page or tool result matches this step before continuing.
-
-## Screen landmarks
-
-Use visible labels, accessible names, headings and current DOM references; re-observe after navigation. Live landmarks remain unverified pending reconnaissance.
+1. Set supplied stations/date/quota through visible controls, selecting actual autocomplete suggestions. Use browser_type(private=false) for these public search values, so matching suggestions stay visible; passenger/credential fields remain private. Ask for missing inputs.
+   Verify: Selected station names/codes, date and quota match on results.
+2. Inspect displayed availability/full fares for eligible trains/classes. Include mandatory charges; skip WL/RAC unless authorized.
+   Verify: Train/class/date, confirmed availability and total observed.
+3. Rank by total payable fare, then earliest departure on ties; respect class constraints. GENERAL proceeds to review now; only TATKAL uses its configured opening time.
+   Verify: Cheapest among actual checked options; no unobserved fare/availability claims.
 
 ## Failure modes and recovery
-
-Retry transient failures with bounded backoff; re-observe after state changes. Stop on review mismatch, uncertain payment, repeated access denial or missing inputs. Use an own-channel handoff for unresolved ambiguity.
+Stop on configuration denial or missing inputs. No refresh loop or shell workaround. Check at most seven dates only with authorized date flexibility; report search scope.
 
 ## Definition of done
-
-Route, date and quota match inputs on results page.
+Observed route/date/quota, confirmed availability and total match the journey.
 
 ## Field notes
-
-- Initial procedural draft. Local mock checks do not establish real-site reliability.
+Live fare semantics/landmarks need watching-human verification; simulator totals are not real fares.

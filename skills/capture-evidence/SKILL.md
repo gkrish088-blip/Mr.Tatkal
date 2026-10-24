@@ -4,7 +4,7 @@ description: Save ticket proof and the replay
 when_to_use: Save ticket proof and the replay
 requires: []
 gates: []
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Goal
@@ -17,11 +17,11 @@ Confirmed booking success page visible.
 
 ## Procedure
 
-1. Capture the PNR ticket screenshot and download the e-ticket into the configured evidence directory.
+1. Verify service booking confirmation and PNR, then capture the ticket screenshot. Use browser_download on its actual ticket link, or browser_print_pdf on the actual confirmed ticket/print page. Documents go to this run's steps/downloads and appear as session download links. Never synthesize a ticket from model text; a pending receipt is not a ticket.
    Verify: Confirm the observed page or tool result matches this step before continuing.
 2. Generate replay and summary, preserving every reason and verification.
    Verify: Confirm the observed page or tool result matches this step before continuing.
-3. Check run log, ticket proof, both recordings, frozen skills and manifest are present.
+3. Return the actual session PDF download privately. Keep ticket/passenger data in ignored DATA_DIR. For competition submissions also check both recordings, frozen skills and manifest; never claim missing recordings exist.
    Verify: Confirm the observed page or tool result matches this step before continuing.
 
 ## Screen landmarks

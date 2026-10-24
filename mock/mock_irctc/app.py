@@ -42,7 +42,7 @@ def create_app(seed: int = 0, scenario: str = 'M1', *, real_latency: bool = Fals
     app = FastAPI(title='Local Rail Lab - fictional tickets only')
     rng = random.Random(seed)
     clock = clock or time.time
-    state = {'sessions': {}, 'reservations': {}, 'bookings': {}, 'faults': [],
+    state = {'sessions': {}, 'searches': {}, 'reservations': {}, 'bookings': {}, 'faults': [],
              'requests': [], 'virtual_latency': 0.0, 'expired': False,
              'denied_until': clock() + (60 if scenario == 'M12' else 0)}
     app.state.lab = state
@@ -113,10 +113,11 @@ def create_app(seed: int = 0, scenario: str = 'M1', *, real_latency: bool = Fals
 
     @app.post('/api/search')
     async def search(data: dict, request: Request):
-        session(request)
-        if data.get('origin') != 'RK' or data.get('destination') != 'HW' or data.get('quota') != 'TATKAL' or not data.get('date'):
-            raise HTTPException(422, 'Expected RK to HW, date, and TATKAL quota')
-        return {'trains': trains, 'open': clock() >= open_at, 'opens_at': open_at}
+        token = session(request)
+        if data.get('origin') != 'RK' or data.get('destination') != 'HW' or data.get('quota') not in {'GENERAL','TATKAL'} or not data.get('date'):
+            raise HTTPException(422, 'Expected RK to HW, date, and GENERAL or TATKAL quota')
+        state['searches'][token] = {k:data[k] for k in ('origin','destination','date','quota')}
+        return {'trains': trains, 'open': data['quota']=='GENERAL' or clock() >= open_at, 'opens_at': open_at}
 
     @app.post('/api/passenger')
     async def passenger(data: dict, request: Request):
@@ -126,8 +127,11 @@ def create_app(seed: int = 0, scenario: str = 'M1', *, real_latency: bool = Fals
             state['sessions'].pop(token)
             state['faults'].append('session_expiry')
             raise HTTPException(401, 'Session expired; log in again')
-        if clock() < open_at:
+        journey = state['searches'].get(token, {'origin':'RK','destination':'HW','quota':'TATKAL'})
+        if journey['quota']=='TATKAL' and clock() < open_at:
             raise HTTPException(409, 'Booking window has not opened')
+        if journey.get('date',data.get('date')) != data.get('date'):
+            raise HTTPException(409, 'Journey date does not match the searched date')
         try:
             profile = validate_profile(data.get('profile', {}))
         except ValueError as exc:
@@ -138,7 +142,7 @@ def create_app(seed: int = 0, scenario: str = 'M1', *, real_latency: bool = Fals
         if not isinstance(key, str) or not key:
             raise HTTPException(422, 'idempotency_key is required')
         payload = {'profile': profile, 'train': rank_fares(trains)[0], 'date': data.get('date'),
-                   'origin': 'RK', 'destination': 'HW', 'quota': 'TATKAL'}
+                   'origin': journey['origin'], 'destination': journey['destination'], 'quota': journey['quota']}
         if not payload['date']:
             raise HTTPException(422, 'Journey date is required')
         existing = state['reservations'].get(key)

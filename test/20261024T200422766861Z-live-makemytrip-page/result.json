@@ -1,0 +1,26 @@
+{
+  "started": "2026-10-24T20:04:22.767317+00:00",
+  "command": "BrowserTools.launch(channel=chrome, headless=False); navigate once to https://www.makemytrip.com/railways/",
+  "scope": "Watching owner requested MakeMyTrip. Public search page only. No account details or payment submitted.",
+  "title": "Online Train Ticket Booking, IRCTC Ticket Booking Platform",
+  "elements": 140,
+  "failed_hosts": [
+    "accounts.google.com",
+    "assets.adobedtm.com",
+    "d3c3cq33003psk.cloudfront.net",
+    "dpm.demdex.net",
+    "fonts.googleapis.com",
+    "go-assets.ibcdn.com",
+    "mapi.makemytrip.com",
+    "metrics.makemytrip.com",
+    "pdt.makemytrip.com",
+    "promos.makemytrip.com"
+  ],
+  "result": "public_search_page_loaded",
+  "has_search": true,
+  "timeout": false,
+  "tls_error": false,
+  "finished": "2026-10-24T20:04:28.849336+00:00",
+  "presentation_error": "Console UnicodeEncodeError while printing public page text; browser navigation/screenshot succeeded.",
+  "limitations": "Only the public page was inspected. Provider API dependencies require allowlist configuration. No live login or booking established."
+}

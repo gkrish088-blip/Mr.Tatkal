@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-10-24T20:31:31.991004+00:00",
+  "command": "Watching-human GUI agent searches, then direct BrowserTools public-page diagnostics via ignored tmp/live_probe.py; no direct HTTP account APIs.",
+  "result": "Public route/stations/date selected and 28 cached train results observed. Not a verified live-login/booking pass.",
+  "runs_stopped_for_diagnosis": [
+    {
+      "run_id": "81a3919d-fd3e-4da1-8c3a-6463963f8ba0",
+      "status": "cancelled",
+      "tool_actions": 23,
+      "model_decisions": 23,
+      "tools": {
+        "system_info": 1,
+        "browser_goto": 1,
+        "browser_click": 10,
+        "browser_click_at": 1,
+        "browser_screenshot": 5,
+        "browser_type": 3,
+        "browser_scroll": 1,
+        "browser_triple_click": 1
+      }
+    },
+    {
+      "run_id": "88b260c4-e029-44a6-96d1-622c0e76d880",
+      "status": "cancelled",
+      "tool_actions": 22,
+      "model_decisions": 21,
+      "tools": {
+        "browser_goto": 1,
+        "browser_screenshot": 4,
+        "browser_click": 8,
+        "browser_click_at": 1,
+        "browser_type": 4,
+        "browser_scroll": 1,
+        "browser_press": 2,
+        "browser_triple_click": 1
+      }
+    }
+  ],
+  "observed_required_hosts": [
+    "ground-auto-suggest.makemytrip.com",
+    "cdnjs.cloudflare.com",
+    "railways.makemytrip.com"
+  ],
+  "local_fixes": [
+    "Public text can remain visible while private/password input stays masked",
+    "Sequential key-event entry for autocomplete",
+    "Network diagnostics expose blocked hosts and HTTP statuses without private URL paths/queries",
+    "Read-only field markers, observed list/grid items and viewport rectangles"
+  ],
+  "public_candidate_lead": {
+    "train": "12054",
+    "route": "RK-HW",
+    "date": "2026-10-26",
+    "class": "2S",
+    "quota": "GENERAL",
+    "displayed_base_fare_inr": 75,
+    "availability": "Cached; must refresh before trusting",
+    "departure": "13:04",
+    "arrival": "13:50"
+  },
+  "limitations": "No credentials submitted. No passenger data entered. No real payment request, payable QR or ticket created. Manual diagnostics are separate from autonomous model execution. Actual full payable total and current availability remain unverified."
+}

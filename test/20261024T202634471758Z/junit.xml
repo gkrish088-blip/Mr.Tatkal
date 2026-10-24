@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="11" time="39.752" timestamp="2026-10-25T01:56:34.928574+05:30" hostname="LAPTOP-G3OBD8SU"><testcase classname="tests.unit.test_tools_browser" name="test_browser_real_dom_refs_actions_and_masked_screenshot" time="3.279"><failure message="AssertionError: assert 'ea0c1751b' == 'e316a61a3'&#10;  &#10;  - e316a61a3&#10;  + ea0c1751b">tmp_path = WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-52/test_browser_real_dom_refs_act0')
+
+    @pytest.mark.asyncio
+    async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True, channel='chromium')
+                page = await browser.new_page()
+                tools = BrowserTools(page, artifact_dir=tmp_path)
+                snapshot = await tools.goto(f'http://127.0.0.1:{server.server_port}')
+                refs = {e['name']: e['ref'] for e in snapshot['elements']}
+                before_hash = (await tools.screenshot())['state_hash']
+                await tools.type(refs['Name'], 'CANARY-SECRET')
+                await tools.type(refs['Password'], 'PASSWORD-CANARY')
+                snapshot = await tools.snapshot()
+                assert 'CANARY-SECRET' not in str(snapshot)
+                await page.evaluate("() =&gt; {let e=document.createElement('p');e.textContent='Public search suggestion';document.body.append(e)}")
+                await tools.type(refs['Name'], 'Public search suggestion', private=False)
+                assert 'Public search suggestion' in (await tools.snapshot())['text']
+                assert 'Public search suggestion' not in tools._secret_values
+                forced=await tools.type(refs['Password'], 'FORCED-PRIVATE-CANARY', private=False)
+                assert forced['private'] is True
+                assert 'FORCED-PRIVATE-CANARY' in tools._secret_values
+                await page.evaluate("() =&gt; fetch('https://blocked.test/api?secret=QUERY-CANARY').catch(() =&gt; null)")
+                snapshot=await tools.snapshot()
+                assert snapshot['network']['blocked_hosts']==['blocked.test']
+                assert 'QUERY-CANARY' not in str(snapshot)
+                await page.route('**/diagnostic-failure*', lambda route: route.fulfill(status=503, body='Temporary failure'))
+                await page.evaluate("() =&gt; fetch('/diagnostic-failure?private=QUERY-CANARY')")
+                snapshot=await tools.snapshot()
+                assert snapshot['network']['failed_requests'][-1]=={'host':'127.0.0.1','status':503}
+                assert 'QUERY-CANARY' not in str(snapshot)
+                await page.evaluate("() =&gt; document.querySelector('input').onkeyup = e =&gt; document.querySelector('#status').textContent = 'Key events received'")
+                await tools.type(refs['Name'], 'Public keyboard query', private=False, sequential=True)
+                assert 'Key events received' in (await tools.snapshot())['text']
+                await page.evaluate("() =&gt; {let e=document.createElement('ul');e.innerHTML='&lt;li&gt;Public option&lt;/li&gt;';e.onclick=()=&gt;document.querySelector('#status').textContent='Option selected';document.body.append(e)}")
+                snapshot=await tools.snapshot()
+                option=next(e for e in snapshot['elements'] if e['role']=='li' and e['name']=='Public option')
+                assert option['rect']['width']&gt;0 and option['readonly'] is False
+                await tools.click(option['ref'])
+                assert 'Option selected' in (await tools.snapshot())['text']
+                assert before_hash != (await tools.screenshot())['state_hash']
+                await tools.select(refs['Choice'], 'b')
+                evidence = await tools.screenshot()
+                assert len(evidence['state_hash']) == 64
+                from PIL import Image
+                img = Image.open(evidence['screenshot'])
+                # Password field center is masked, not merely rendered with dots.
+                rect = await page.get_by_label('Password').bounding_box()
+                assert img.getpixel((int(rect['x']+rect['width']/2), int(rect['y']+rect['height']/2)))[:3] == (32, 41, 56)
+                await tools.click(refs['Save'])
+                await tools.wait_for(text='Saved')
+                again = await tools.snapshot()
+&gt;               assert next(e['ref'] for e in again['elements'] if e['name'] == 'Name') == refs['Name']
+E               AssertionError: assert 'ea0c1751b' == 'e316a61a3'
+E                 
+E                 - e316a61a3
+E                 + ea0c1751b
+
+tests\unit\test_tools_browser.py:82: AssertionError</failure></testcase><testcase classname="tests.unit.test_tools_browser" name="test_observed_image_capture_document_download_and_page_pdf" time="1.000" /><testcase classname="tests.integration.test_browser_workflow" name="test_generic_engine_skill_macro_local_ticket[TATKAL]" time="7.069" /><testcase classname="tests.integration.test_browser_workflow" name="test_generic_engine_skill_macro_local_ticket[GENERAL]" time="7.109" /><testcase classname="tests.web.test_gui" name="test_gui_local_ticket_and_schedule_controls" time="10.791" /><testcase classname="tests.web.test_gui" name="test_managed_browser_cookies_survive_restart" time="0.924" /><testcase classname="tests.web.test_gui" name="test_gui_general_agent_uses_server_provider" time="4.314" /><testcase classname="tests.web.test_gui" name="test_gui_answers_and_followup_survive_reload" time="4.319" /><testcase classname="tests.lint.test_invariants" name="test_harness_has_no_booking_domain_names" time="0.021" /><testcase classname="tests.lint.test_invariants" name="test_all_skills_load_without_code_changes" time="0.055" /><testcase classname="tests.lint.test_invariants" name="test_no_accidental_real_provider_keys_in_python_sources" time="0.035" /></testsuite></testsuites>
