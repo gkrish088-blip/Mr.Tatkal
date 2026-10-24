@@ -1,0 +1,4 @@
+git diff --check: passed
+Inline Python relative-Markdown-link check: 23 links checked, 0 missing
+Document size at validation: 164 lines, 17,848 bytes
+Scope: documentation only; no application tests or live website actions

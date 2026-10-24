@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-24T22:38:55Z",
+  "command": [
+    "git diff --check",
+    "inline Python: parse relative Markdown links, strip anchors, and verify each target exists"
+  ],
+  "result": "passed",
+  "checks": {
+    "local_markdown_links": 23,
+    "missing_links": 0,
+    "document_lines": 164,
+    "document_bytes": 17848
+  },
+  "limitations": "Documentation-only validation. No application tests, provider requests, browser sessions, account login, or booking actions were run."
+}

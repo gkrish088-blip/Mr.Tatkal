@@ -4,6 +4,8 @@
 
 This report covers the recorded attempts on 25 October 2026 IST to book one normal, GENERAL-quota ticket from Roorkee (RK) to Haridwar (HW), first through IRCTC and then through the owner-selected MakeMyTrip alternative.
 
+For the detailed MakeMyTrip browser-control chronology and exact interaction method, see [browser methodology and failure analysis](makemytrip-browser-methodology.md).
+
 **The task was not completed.** Public train results were reached, but authenticated login, refreshed availability, the final payable fare, payment and a confirmed ticket were not established. No real payment QR or ticket was produced.
 
 The reasons below distinguish observed failures from suspected causes. They contain no account credentials, phone numbers, OTPs or passenger details.
