@@ -37,3 +37,9 @@ Set TELEGRAM_ENABLED=true, TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in the ignore
 Local regression passes do not qualify a live booking. Real-site landmarks, account readiness, model quota/failover under real conditions, external handoff delivery, native-app rehearsal, time synchronization, Drive placement, recordings and ticket proof remain operator checks. The source PDF's live attempt and hands-free submission evidence have not been performed.
 
 Shown-demo recording, compiling successful traces into macros, and automatically promoting/refining skills after regression validation are bonus features from the plan and remain unimplemented. Told-task learning and append-only field notes are supported. No freeze tag, live schedule, real login, booking or payment is created automatically by these changes.
+
+## Verification evidence
+
+The final automated regression is 205 passed and one Windows symlink-privilege skip. Four separate real-Haiku checks passed through the running GUI API: answering a skill question, a verified file/terminal follow-up, teaching/loading/executing a new skill with a reusable field note, and extracting spreadsheet values into a fictional browser form with independently checked stored results. An earlier real test exposed and led to fixing a static-browser false stuck detection; its failed evidence is retained. See test/general-agent-verification.md and the timestamped records it links for commands, UTC timestamps, results and exact scope.
+
+To repeat the paid provider checks on an idle local server, run `python scripts/smoke_general_agent.py --live-model`. It creates only local test files/learned skills and a temporary fictional web service, and does not drive native apps or real accounts. Reload the GUI after a server update to load the latest conversation client.

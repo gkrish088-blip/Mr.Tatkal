@@ -81,4 +81,11 @@ class HumanChannel:
             await asyncio.sleep(min(.05, max(0, request["deadline"] - time.time())))
 
     def pending(self):
-        return [r for r in self._read().values() if r["status"] == "pending"]
+        return [r for r in self._read().values() if r["status"] == "pending" and r['deadline'] > time.time()]
+
+    def cancel_pending(self):
+        requests = self._read()
+        for request in requests.values():
+            if request['status'] == 'pending':
+                request['status'] = 'cancelled'
+        atomic_json(self.path, requests)

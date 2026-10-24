@@ -104,6 +104,11 @@ class RunManager:
             self.store.update(run_id,status=state.status,finished=time.time())
         except BaseException as error:
             state=self.runs.load(run_id)
+            if isinstance(error,asyncio.CancelledError):
+                HumanChannel(self.runs._path(run_id).parent/'handoff.json').cancel_pending()
+                # Cancelling a question cannot leave an uncertain computer operation.
+                if state.pending_action and state.pending_action.get('name')=='ask_human':
+                    state.pending_action=None
             state.status='needs_reconciliation' if state.pending_action else ('cancelled' if isinstance(error,asyncio.CancelledError) else 'failed')
             self.runs.save(state)
             import os

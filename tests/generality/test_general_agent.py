@@ -176,6 +176,21 @@ async def test_notification_uses_configured_channel_without_a_handoff(tmp_path):
     assert not human.pending()
 
 
+async def test_static_browser_does_not_block_successful_file_work(tmp_path):
+    engine,state=runtime(tmp_path)
+    async def capture():return {'state_hash':'unchanged-browser','screenshot':None}
+    engine.registry.capture=capture
+    decisions=iter([Decision('Write a different requested file',[ToolCall('file_write',{'path':f'notes/{i}.txt','text':str(i)})]) for i in range(6)]
+                   +[Decision('Six notes saved.',done=True)])
+    class Planner:
+        async def decide(self,*args):return next(decisions)
+    async def unexpected_recovery(*args):raise AssertionError('Different successful tools are making progress')
+    engine.model=Planner();engine.recover=unexpected_recovery
+    await engine.run(state)
+    assert state.status=='completed' and state.step==6 and state.handoffs==0
+    assert len(list((tmp_path/'workspace/notes').glob('*.txt')))==6
+
+
 async def test_extract_workbook_and_pdf_respects_workspace(tmp_path):
     from openpyxl import Workbook
     from pypdf import PdfWriter

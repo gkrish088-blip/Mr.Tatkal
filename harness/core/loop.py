@@ -187,7 +187,11 @@ class Engine:
                 key = json.dumps(asdict(call), sort_keys=True)
                 self.failures[key] = 0 if result.ok else self.failures.get(key, 0)+1
                 observation = await self.observe()
-                digest = observation.get("state_hash") or hashlib.sha256(json.dumps(result.data, sort_keys=True).encode()).hexdigest()
+                # A static browser does not imply a stalled filesystem or terminal task.
+                # Detect repeated identical action/result/state, not unrelated successful work.
+                digest = hashlib.sha256(json.dumps({'action': asdict(call), 'result': asdict(result),
+                                                     'state_hash': observation.get('state_hash')},
+                                                    sort_keys=True, default=str).encode()).hexdigest()
                 recent.append(digest)
                 stuck = (len(recent) >= 3 and len(set(recent[-3:])) == 1) or self.failures[key] >= 3
                 if stuck:

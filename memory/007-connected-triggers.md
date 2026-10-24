@@ -1,0 +1,9 @@
+# Connected event and operator channels
+
+Implementation commit: `0fdca9fd578588c96093754e9fa8197aafa995fd` (`feat: connect event and operator channels to the general agent`). Includes the preceding implementation's memory note.
+
+Changed: new harness/web/triggers.py; settings/app/manager/CLI integration; events and Telegram adapters; generic notify_human; GUI dynamic learned-skill selection and capability display; example config/env, docs/general-agent.md and interfaces/README; event/notification/GUI tests. File/mail/signed-webhook and idle Telegram starts now reach the same persistent serialized queue. Telegram handoff replies use one transport shared with active runs. Sources are opt-in; webhook signatures bind event identity and body; duplicate events are suppressed. Email supplies bounded plain body text using read-only IMAP/BODY.PEEK. Concurrent intent writes are serialized.
+
+Checks: focused sources/services/server 23 passed (`test/20261024T191836251307Z/`); full suite 202 passed, 1 skipped, 56.50 s (`test/20261024T192224113047Z/`); final GUI/general-agent checks 16 passed, 22.07 s (`test/20261024T192453636387Z/`). JavaScript syntax, compileall and diff whitespace checks passed. All mailbox/Telegram traffic used fixtures. No real outbound messages or native desktop actions occurred.
+
+Real Haiku smoke testing then exposed a remaining runtime bug: unchanged browser screenshots trigger recovery even while different file/shell tools make progress. The skill-list answer and terminal follow-up succeeded, but the learned-skill check unnecessarily requested recovery guidance and was stopped. Preserve this failed live evidence and fix the generic progress detector before calling live verification complete. The native-app/live-booking/operator evidence and shown-demo/auto-promotion bonus limits in docs/general-agent.md remain.
