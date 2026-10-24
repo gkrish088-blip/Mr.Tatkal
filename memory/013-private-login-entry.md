@@ -1,0 +1,13 @@
+# Private key-event entry and unresolved live login
+
+Implementation commit: `a0c592baad1cbd05b977d11f6440b99e6e5edd2f`.
+
+Changed files: harness/tools/secrets.py, harness/tools/__init__.py, docs/gui-server.md, tests/unit/test_tools_browser.py and test/20261024T221825501606Z/, test/20261024T222005295290Z-live-login-attempt/.
+
+Named secret insertion supports optional sequential=true, forwarding private key events for reactive fields without returning the value. Default behavior is unchanged. Actual Chromium coverage verifies that key events occur, the value is hidden from browser observations, and the redactor knows it. Focused command: `python scripts/test_project.py -q tests/unit/test_tools_browser.py tests/unit/test_tools.py tests/lint/test_invariants.py`: 16 passed, 1 skipped (Windows symlink privilege), 11.66 s. Exact timestamps/command/JUnit are recorded. The preceding full suite was 218 passed, 1 skipped; it was not rerun for this default-compatible optional flag.
+
+The owner explicitly authorized entering their number and requesting a MakeMyTrip login OTP. Session 7fec1356-80e6-4dc4-bda7-ce6cf5499bbc inserted named MMT_MOBILE once and clicked CONTINUE once. The website remained at the mobile-number form; no OTP verification screen was established. The model then repeated snapshots and stopped. Report contains only redacted action metadata and explicitly does not establish SMS delivery, authentication or booking. The owner was asked whether a login OTP arrived; no reply/code was available at this handover. Do not resend automatically or assume no message was delivered.
+
+A credential-free page inspection found an explicit script reference to d3c3cq33003psk.cloudfront.net/opentag-53841-raillandingdesktop.js. That exact asset host was added to ignored .env as a normal provider dependency; no spoofing/proxy/bot-check bypass was used. Its effect on login remains unverified. MMT_MOBILE is in Windows credential storage, not tracked files. No OTP or passenger values are recorded here. The earlier railway password has not been submitted to the official site or transferred to the provider login.
+
+Remaining: clarify whether the first login code arrived, then perform a bounded watching-owner retry only when appropriate. Complete actual provider authentication, refresh normal availability, verify full fare/passenger review, obtain approval before creating a payment request, show only the real gateway QR if provided, and verify a real ticket/PNR before delivery. None of live login, full fare, payable QR, payment or ticket is verified. Code/model guidance and local simulator tests must not be represented as real-service passes. The server should stay running idle with latest configuration; inspect active status before restarting.
