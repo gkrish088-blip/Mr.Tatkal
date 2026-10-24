@@ -164,6 +164,18 @@ async def test_handoff_pauses_then_reply_returns_to_model(tmp_path):
     assert state.status=='completed' and state.handoffs==1 and state.answer=='You chose blue.'
 
 
+async def test_notification_uses_configured_channel_without_a_handoff(tmp_path):
+    from harness.handoff.channel import HumanChannel
+    sent=[]
+    class Transport:
+        async def send(self,request):sent.append(request)
+    human=HumanChannel(tmp_path/'handoff.json',Transport())
+    engine,state=runtime(tmp_path,human=human)
+    result=await engine.act(state,ToolCall('notify_human',{'text':'The local task is complete.'}),'Report the verified result')
+    assert result.ok and sent[0]['kind']=='notice' and state.handoffs==0
+    assert not human.pending()
+
+
 async def test_extract_workbook_and_pdf_respects_workspace(tmp_path):
     from openpyxl import Workbook
     from pypdf import PdfWriter

@@ -29,6 +29,9 @@ class Settings:
     provider: str = 'claude'
     skill_writes_enabled: bool = True
     freeze_manifest: str = ''
+    triggers_file: str = ''
+    telegram_enabled: bool = False
+    telegram_chat_id: str = ''
 
     @classmethod
     def from_env(cls, env_file='.env'):
@@ -45,7 +48,9 @@ class Settings:
                    browser_hosts=tuple(x.strip() for x in os.getenv('BROWSER_ALLOWED_HOSTS','localhost,127.0.0.1,::1').split(',') if x.strip()),
                    desktop_enabled=flag('DESKTOP_ENABLED'), max_steps=int(os.getenv('MAX_STEPS',100)),
                    max_seconds=int(os.getenv('MAX_SECONDS',300)), provider=os.getenv('LLM_PROVIDER','claude'),
-                   skill_writes_enabled=flag('SKILL_WRITES_ENABLED', True), freeze_manifest=os.getenv('FREEZE_MANIFEST', ''))
+                   skill_writes_enabled=flag('SKILL_WRITES_ENABLED', True), freeze_manifest=os.getenv('FREEZE_MANIFEST', ''),
+                   triggers_file=os.getenv('TRIGGERS_FILE', ''), telegram_enabled=flag('TELEGRAM_ENABLED'),
+                   telegram_chat_id=os.getenv('TELEGRAM_CHAT_ID', ''))
 
     def validate(self):
         from zoneinfo import ZoneInfo

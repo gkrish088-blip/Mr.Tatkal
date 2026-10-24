@@ -137,6 +137,10 @@ async def test_gui_general_agent_uses_server_provider(gui_server,monkeypatch):
         try:
             page=await browser.new_page(viewport={'width':1360,'height':950})
             await page.goto(base)
+            from harness.skillrt.loader import SkillLoader
+            from harness.skillrt.writer import SkillWriter
+            from harness.log.redact import Redactor
+            await SkillWriter(SkillLoader(ROOT/'skills',cfg.data_dir/'skills'),Redactor()).create('gui-learned','A newly learned fixture task','# Goal\nWrite a local note.')
             await page.locator('#goal').fill('Create gui-note.txt with a short note in the workspace.')
             await page.locator('#run-button').click()
             deadline=time.monotonic()+20
@@ -145,6 +149,7 @@ async def test_gui_general_agent_uses_server_provider(gui_server,monkeypatch):
                 await asyncio.sleep(.2)
             assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
             assert (cfg.data_dir/'workspace/gui-note.txt').read_text()=='Written through the general agent GUI.'
+            await page.locator('#skill option[value="gui-learned"]').wait_for(state='attached')
             assert canary not in await page.content()
             async with httpx.AsyncClient() as client:
                 status=await client.get(base+'/api/status');assert canary not in status.text

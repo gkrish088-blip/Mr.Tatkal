@@ -24,6 +24,7 @@ class RunManager:
         self.execution=None
         self.worker=None
         self.closing=False
+        self.transport=None
         self.demo=importlib.import_module('mock.gui_demo').DemoPlugin()
 
     async def start(self):
@@ -97,6 +98,8 @@ class RunManager:
         self.store.update(run_id,status='running',started=time.time(),error=None)
         try:
             config=self.settings.runtime(row['provider'],demo=row['mode']=='demo')
+            if row['mode']=='agent' and self.transport:
+                config['handoff_transport']=self.transport
             state=await self.runner(config,row['goal'],run_id=run_id,skill_name=row['skill'])
             self.store.update(run_id,status=state.status,finished=time.time())
         except BaseException as error:

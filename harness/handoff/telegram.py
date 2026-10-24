@@ -26,8 +26,9 @@ class TelegramTransport:
             raise RuntimeError("Handoff transport request failed") from None
 
     async def send(self, request):
-        text = (f"Request {request['id']} ({request['kind']})\n{request['text']}\n"
-                f"Reply: /reply {request['id']} <answer>")
+        text = f"Request {request['id']} ({request['kind']})\n{request['text']}"
+        if request['kind'] != 'notice':
+            text += f"\nReply: /reply {request['id']} <answer>"
         if request.get("options"):
             text += "\nOptions: " + ", ".join(map(str, request["options"]))
         await self._request("POST", "/sendMessage", json={"chat_id": self.chat_id, "text": text})

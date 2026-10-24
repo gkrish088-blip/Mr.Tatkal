@@ -18,6 +18,8 @@ The general agent answers questions, executes tools, reports results, and accept
 
 Teach a reusable job by describing it and asking the agent to save a skill. `create_skill` saves validated Markdown under the ignored `data/skills/`, and `append_skill_note` records reusable lessons while preserving existing procedures and approval gates. Learned skills join the available index on subsequent model turns and restarts. A saved skill is not an execution pass: ask the agent to try it on a local fixture and verify the result. `SKILL_WRITES_ENABLED=false` or a configured `FREEZE_MANIFEST` disables these writing tools.
 
+Optional file, mailbox and signed webhook sources are configured through `TRIGGERS_FILE`; see [general-agent setup and coverage](docs/general-agent.md). They queue the same general agent as the task composer. Optional `TELEGRAM_ENABLED=true` plus server-owned bot token/chat ID enables idle `/run` commands, handoff replies and the `notify_human` tool. No external transport starts with the default configuration.
+
 Docker deployment, login configuration, persistent volumes and full instructions: [docs/gui-server.md](docs/gui-server.md). A remote bind requires a strong `GUI_PASSWORD`. No production server has been deployed automatically.
 
 ## Setup on Windows

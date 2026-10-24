@@ -17,3 +17,11 @@ New checks cover both model protocols for natural and empty answers; redacted an
 The full automated suite uses local provider fixtures and simulated domain services. The GUI tests use actual Chromium, not a mocked browser. Combined native-desktop observation is adapter-tested; no native input was performed. No real login, booking, payment, Telegram or mailbox access occurred. Native-desktop rehearsal, live-domain qualification, external handoff delivery, recorder-based skill learning and automatic validated patch promotion remain separate operator work. Told-task skills and append-only field notes are supported; saving a skill is not represented as an execution pass.
 
 The updated conversation screenshot was visually inspected and is retained as `test/general-agent-conversation.png`. It intentionally includes escaped script text from the XSS fixture.
+
+## Connected event and operator channels
+
+- `python scripts/test_project.py -q tests/web/test_event_sources.py tests/unit/test_services.py tests/web/test_server.py`: 23 passed, 7.35 s; `test/20261024T191836251307Z/`.
+- `python scripts/test_project.py -q`: **202 passed, 1 skipped**, 56.50 s; `test/20261024T192224113047Z/`. This run includes the new event/notification tests. Skip/warning remain as above.
+- After the final skill-dropdown/capability-display changes, `python scripts/test_project.py -q tests/web/test_gui.py tests/generality/test_general_agent.py`: 16 passed, 22.07 s; `test/20261024T192453636387Z/`.
+
+These cover actual local file arrival/change/restart dispatch, source-namespaced queue inputs, signed webhook authentication/identity/replay/payload limits, concurrent event-state updates, read-only IMAP parsing and message-body delivery through a fake mailbox, and idle Telegram chat -> queue -> persisted handoff -> reply through one mocked HTTP transport. No real email or Telegram service was contacted. Learned skills appear in the GUI selector after a completed turn. Default configuration still enables no external messaging or mailbox sources.

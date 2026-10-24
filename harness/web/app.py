@@ -25,6 +25,7 @@ from harness.skillrt.loader import SkillLoader
 from harness.triggers.schedule import Scheduler, timestamp
 from harness.web.manager import RunManager
 from harness.web.settings import Settings
+from harness.web.triggers import TriggerService
 
 
 class Task(BaseModel):
@@ -63,6 +64,7 @@ def create_app(settings=None, runner=None):
     # Invalidate login cookies when the operator rotates the server password.
     key=hmac.digest(key,settings.password.encode(),'sha256')
     manager=RunManager(settings,runner)
+    triggers=TriggerService(settings,manager)
     scheduler=Scheduler(settings.data_dir/'schedules.json')
     schedule_lock=asyncio.Lock()
     errors=[]
@@ -110,16 +112,21 @@ def create_app(settings=None, runner=None):
     @asynccontextmanager
     async def lifespan(app):
         acquire_lock()
-        await manager.start()
-        ticker=asyncio.create_task(scheduling())
-        try: yield
+        ticker=None
+        try:
+            await manager.start()
+            await triggers.start()
+            ticker=asyncio.create_task(scheduling())
+            yield
         finally:
-            ticker.cancel();await asyncio.gather(ticker,return_exceptions=True)
+            if ticker:
+                ticker.cancel();await asyncio.gather(ticker,return_exceptions=True)
+            await triggers.close()
             await manager.close()
             if lock_handle: lock_handle.close()
 
     app=FastAPI(title='Agent control room',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
-    app.state.manager=manager;app.state.scheduler=scheduler;app.state.settings=settings
+    app.state.manager=manager;app.state.scheduler=scheduler;app.state.settings=settings;app.state.triggers=triggers
     app.add_middleware(TrustedHostMiddleware,allowed_hosts=list(settings.allowed_hosts))
 
     @app.middleware('http')
@@ -159,6 +166,21 @@ def create_app(settings=None, runner=None):
     @app.get('/health')
     async def health(): return {'ok':True}
 
+    @app.post('/hooks/{name}',status_code=202)
+    async def webhook(name: str,request: Request):
+        if name not in triggers.webhooks:raise HTTPException(404,'Unknown event source')
+        body=bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body)>1000000:raise HTTPException(413,'Webhook payload is too large')
+        event_id=request.headers.get('X-Event-ID','')
+        if not event_id or len(event_id)>200:raise ValueError('Supply X-Event-ID with at most 200 characters')
+        try:
+            accepted=await triggers.webhook(name,bytes(body),request.headers.get('X-Signature',''),event_id)
+        except PermissionError:
+            raise HTTPException(403,'Invalid event signature') from None
+        return {'accepted':accepted}
+
     @app.get('/api/access')
     async def access(request: Request):
         return {'required':bool(settings.password),'authenticated':authenticated(request)}
@@ -190,6 +212,7 @@ def create_app(settings=None, runner=None):
                 'capabilities':{'desktop':settings.desktop_enabled,'browser_hosts':list(settings.browser_hosts),
                                 'workspace':str(settings.data_dir/'workspace'),
                                 'skill_writes':settings.skill_writes_enabled and not bool(settings.freeze_manifest)},
+                'triggers':triggers.status(),
                 'skills':SkillLoader(settings.skills_dir, settings.data_dir/'skills').index()}
 
     @app.post('/api/check-model')

@@ -10,10 +10,15 @@ from harness.handoff.channel import atomic_json
 class EventTrigger:
     def __init__(self, state_path):
         self.path = Path(state_path)
+        self.lock = asyncio.Lock()
         if not self.path.exists():
             atomic_json(self.path, {})
 
     async def emit(self, event_id, goal, inputs, dispatch):
+        async with self.lock:
+            return await self._emit(event_id, goal, inputs, dispatch)
+
+    async def _emit(self, event_id, goal, inputs, dispatch):
         seen = json.loads(self.path.read_text(encoding="utf-8"))
         if event_id in seen:
             return False
@@ -35,7 +40,7 @@ class FileWatcher(EventTrigger):
     async def poll_once(self, dispatch):
         count = 0
         for path in sorted(self.directory.glob(self.pattern)):
-            if not path.is_file() or path.resolve() == self.path.resolve():
+            if not path.is_file() or not path.resolve().is_relative_to(self.directory) or path.resolve() == self.path.resolve():
                 continue
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             count += await self.emit(f"file:{path.resolve()}:{digest}", self.goal,
@@ -60,7 +65,8 @@ class EmailTrigger(EventTrigger):
         """Read-only IMAP over TLS; credentials remain in memory."""
         def fetch():
             import imaplib
-            import email
+            from email.parser import BytesParser
+            from email.policy import default
             from email.header import decode_header, make_header
             with imaplib.IMAP4_SSL(host) as connection:
                 connection.login(username, password)
@@ -74,25 +80,32 @@ class EmailTrigger(EventTrigger):
                     if status != "OK":
                         continue
                     raw = next((part[1] for part in payload if isinstance(part, tuple)), b"")
-                    parsed = email.message_from_bytes(raw)
+                    parsed = BytesParser(policy=default).parsebytes(raw)
+                    body = parsed.get_body(preferencelist=('plain',)) if parsed.is_multipart() else parsed
+                    text = body.get_content() if body and body.get_content_maintype() == 'text' else ''
                     messages.append({"id": f"{host}:{mailbox}:{uid.decode()}",
                                      "subject": str(make_header(decode_header(parsed.get("Subject", "")))),
-                                     "from": parsed.get("From", "")})
+                                     "from": str(parsed.get("From", "")), "text": text[:50000]})
                 return messages
         return await self.process(await asyncio.to_thread(fetch), subject, goal, dispatch)
 
 
 class WebhookTrigger(EventTrigger):
-    def __init__(self, state_path, secret):
+    def __init__(self, state_path, secret, bind_event_id=False):
         super().__init__(state_path)
         if not secret:
             raise ValueError("Webhook signing secret is required")
         self.secret = secret.encode()
+        self.bind_event_id = bind_event_id
 
     async def receive(self, body, signature, event_id, goal, dispatch):
-        expected = hmac.new(self.secret, body, hashlib.sha256).hexdigest()
+        signed = event_id.encode()+b'.'+body if self.bind_event_id else body
+        expected = hmac.new(self.secret, signed, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature.removeprefix("sha256=")):
             raise PermissionError("Invalid webhook signature")
         if not event_id:
             raise ValueError("Webhook event id is required")
-        return await self.emit("webhook:" + event_id, goal, json.loads(body), dispatch)
+        payload = json.loads(body)
+        if not isinstance(payload, dict):
+            raise ValueError('Webhook body must be a JSON object')
+        return await self.emit("webhook:" + event_id, goal, payload, dispatch)

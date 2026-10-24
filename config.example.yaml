@@ -2,6 +2,8 @@
 workspace: workspace
 runs: runs
 skills: skills
+learned_skills: workspace/skills
+skill_writes_enabled: true
 schedule_store: runs/schedules.json
 max_steps: 100
 max_seconds: 300

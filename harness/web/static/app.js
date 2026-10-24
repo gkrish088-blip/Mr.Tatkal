@@ -38,14 +38,20 @@ function renderConfig(){
   const selected=$('provider').value||c.default_provider,scheduled=$('schedule-provider').value||c.default_provider;
   $('provider').innerHTML=options;$('schedule-provider').innerHTML=options;$('provider').value=selected;$('schedule-provider').value=scheduled;
   if(!initialized){
-    const skills=c.skills.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
-    $('skill').insertAdjacentHTML('beforeend',skills);$('schedule-skill').insertAdjacentHTML('beforeend',skills);
     $('schedule-timezone').value=c.timezone; initialized=true;
   }
+  renderSkills(c.skills);
   $('timezone-small').textContent=c.timezone;
   $('model-note').textContent=providers.some(([,p])=>p.configured)?'Server credentials ready. No key needed in your browser.':'Add a model key to .env to run the general agent.';
   $('provider-cards').innerHTML=providers.map(([key,p])=>`<section class="card provider-card">${pill(p.configured?'configured':'not configured')}<h2>${key==='claude'?'Claude':'DeepSeek'}</h2><code>${esc(p.model)}</code><p>${p.configured?'Server key is configured.':`Add ${key==='claude'?'ANTHROPIC_API_KEY':'DEEPSEEK_API_KEY'} in .env.`}</p><button class="secondary small" data-check="${key}" ${p.configured?'':'disabled'}>Test connection ↗</button><p class="form-hint">Sends a small request using the server key.</p></section>`).join('');
-  $('browser-setting').textContent=`Browser: ${c.browser.mode}${c.browser.headless?' · headless':''}. Configure BROWSER_ALLOWED_HOSTS before accessing other sites.`;
+  $('browser-setting').textContent=`Browser: ${c.browser.mode}${c.browser.headless?' · headless':''}. Desktop: ${c.capabilities.desktop?'enabled':'disabled'}. Skill learning: ${c.capabilities.skill_writes?'enabled':'disabled'}. Event sources: ${c.triggers.sources.length}. Telegram: ${c.triggers.telegram_enabled?'enabled':'disabled'}. Configure BROWSER_ALLOWED_HOSTS before accessing other sites.`;
+}
+function renderSkills(skills){
+  const signature=JSON.stringify(skills);
+  if(state.skillSignature===signature)return;
+  const options='<option value="">Let the agent choose</option>'+skills.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  for(const id of ['skill','schedule-skill']){const selected=$(id).value;$(id).innerHTML=options;$(id).value=selected;}
+  state.skillSignature=signature;
 }
 function artifactUrl(id,path){return '/api/sessions/'+encodeURIComponent(id)+'/artifacts/'+path.split('/').map(encodeURIComponent).join('/');}
 async function renderDetail(){
@@ -62,9 +68,11 @@ async function renderDetail(){
   $('followup-form').hidden=s.mode!=='agent'||!['completed','blocked','failed','cancelled','limit_reached'].includes(s.status)||s.pending_action;
   $('replay-link').hidden=!s.has_replay;$('replay-link').href=artifactUrl(s.id,'replay.html');
   let screenshot=[...s.events].reverse().find(e=>e.after?.screenshot)?.after.screenshot;
+  const visual=!(s.step===0&&s.answer&&s.events.every(e=>e.after?.url==='about:blank'&&!e.after?.browser_screenshot));
+  if(!visual)screenshot=null;
   if(screenshot){screenshot='steps/'+screenshot.replaceAll('\\','/').split('/').pop();}
-  if(!screenshot)screenshot=s.artifacts.at(-1);
-  $('screenshot').hidden=!screenshot;$('screenshot-placeholder').hidden=!!screenshot;
+  if(!screenshot&&visual)screenshot=s.artifacts.at(-1);
+  $('screenshot').hidden=!screenshot;$('screenshot-placeholder').hidden=!!screenshot||!visual;
   if(screenshot){const url=artifactUrl(s.id,screenshot);if($('screenshot').getAttribute('src')!==url)$('screenshot').src=url;}
   $('timeline').innerHTML=[...s.events].reverse().slice(0,30).map(e=>`<li class="${e.result.ok?'':'failed'}"><span class="step-number">${e.phase==='plan'?'·':e.step}</span><span>${esc(e.reason)}<small>${esc(e.action.name)} · ${esc(e.tier)} · ${e.phase==='plan'?'model response':e.verification.verdict?'verified':'check failed'}</small></span></li>`).join('')||'<li>Waiting for the agent to begin.</li>';
   const box=$('handoff-box');box.hidden=!s.requests.length;
@@ -81,6 +89,10 @@ async function refresh(){
     [state.sessions,state.schedules]=await Promise.all([api('/sessions'),api('/schedules')]);
     renderSessions();renderSchedules();
     if(!state.selected && state.sessions.length)state.selected=state.sessions[0].id;
+    const completed=state.sessions.find(s=>s.id===state.selected&&s.status==='completed');
+    if(completed&&state.skillTurn!==completed.id+':'+completed.finished){
+      state.config=await api('/status');renderSkills(state.config.skills);state.skillTurn=completed.id+':'+completed.finished;
+    }
     await renderDetail();$('server-state').textContent='Server connected';$('server-state').classList.remove('offline');
   }catch(error){$('server-state').textContent='Connection interrupted';$('server-state').classList.add('offline');}
   finally{polling=false;}

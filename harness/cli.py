@@ -53,7 +53,7 @@ async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
         from harness.handoff.telegram import TelegramTransport
         tc = config['telegram']
         transport = TelegramTransport(os.environ[tc['token_env']], tc['chat_id'])
-    human = HumanChannel(runs/state.run_id/'handoff.json', transport=transport)
+    human = HumanChannel(runs/state.run_id/'handoff.json', transport=transport or config.get('handoff_transport'))
     if transport:
         polling = asyncio.create_task(transport.serve(human))
     try:

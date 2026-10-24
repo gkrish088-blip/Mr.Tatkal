@@ -26,6 +26,8 @@ class Engine:
         registry.register("use_skill", self.use_skill, "Load a skill's full instructions", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]})
         if human:
             registry.register("ask_human", self.ask_human, "Pause and ask the operator through the handoff channel", {"type": "object", "properties": {"kind": {"type": "string", "enum": ["text", "choose", "approve", "external_approval"]}, "text": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}, "timeout": {"type": "number"}}, "required": ["kind", "text"]})
+            if getattr(human, 'transport', None):
+                registry.register('notify_human', self.notify_human, 'Send a result and current screenshot through the configured operator channel without requesting a reply')
 
     async def list_skills(self):
         return {'skills': self.loader.index()}
@@ -41,6 +43,13 @@ class Engine:
             observation = await self.observe()
             kwargs['attachments'] = [observation['screenshot']] if observation.get('screenshot') else []
         return await self.human.ask(kind, text, **kwargs)
+
+    async def notify_human(self, text: str):
+        import uuid
+        observation = await self.observe()
+        await self.human.transport.send({'id': uuid.uuid4().hex, 'kind': 'notice', 'text': text,
+                                        'attachments': [observation['screenshot']] if observation.get('screenshot') else []})
+        return {'sent': True}
 
     async def decide(self, state):
         observation = await self.observe()
