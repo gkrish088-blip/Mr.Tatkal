@@ -14,6 +14,10 @@ Open **http://127.0.0.1:8787**, or start the server with `start-gui.cmd` on Wind
 
 Add `ANTHROPIC_API_KEY` or `DEEPSEEK_API_KEY` to the ignored `.env`, choose `LLM_PROVIDER=claude` or `deepseek`, and restart. These are server-owned credentials; the GUI never asks users for API keys. Session metadata, browser cookies, runs and schedules stay under the ignored `data/` directory. The server includes a persistent managed Chromium browser and serializes tasks to avoid simultaneous control of one device.
 
+The general agent answers questions, executes tools, reports results, and accepts follow-up messages in the same session. Try **List the skills you have**, then **Create a Python script that prints 6 * 7, run it, verify the output, and report it**. The runtime supplies its OS, Python path, workspace and enabled capabilities. Files and shell start in `data/workspace/`; `file_extract` reads PDFs and XLSX cells for cross-application tasks. Browser hosts are controlled by `BROWSER_ALLOWED_HOSTS` (explicit `*` permits any HTTP(S) host). Desktop control requires `DESKTOP_ENABLED=true`; browser and desktop evidence are combined when both are enabled.
+
+Teach a reusable job by describing it and asking the agent to save a skill. `create_skill` saves validated Markdown under the ignored `data/skills/`, and `append_skill_note` records reusable lessons while preserving existing procedures and approval gates. Learned skills join the available index on subsequent model turns and restarts. A saved skill is not an execution pass: ask the agent to try it on a local fixture and verify the result. `SKILL_WRITES_ENABLED=false` or a configured `FREEZE_MANIFEST` disables these writing tools.
+
 Docker deployment, login configuration, persistent volumes and full instructions: [docs/gui-server.md](docs/gui-server.md). A remote bind requires a strong `GUI_PASSWORD`. No production server has been deployed automatically.
 
 ## Setup on Windows

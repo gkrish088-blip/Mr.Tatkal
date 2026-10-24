@@ -13,15 +13,23 @@ class Skill:
 
 
 class SkillLoader:
-    def __init__(self, root):
+    def __init__(self, root, learned_root=None):
         self.root = Path(root).resolve()
+        self.learned_root = Path(learned_root).resolve() if learned_root else self.root
+
+    def folder(self, name, writable=False):
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+            raise ValueError("Invalid skill name")
+        root = self.learned_root
+        if not writable and not (root / name / 'SKILL.md').exists():
+            root = self.root
+        folder = (root / name).resolve()
+        if not folder.is_relative_to(root):
+            raise ValueError("Skill escapes root")
+        return folder
 
     def load(self, name):
-        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
-            raise ValueError("Invalid skill name")
-        folder = (self.root / name).resolve()
-        if not folder.is_relative_to(self.root):
-            raise ValueError("Skill escapes root")
+        folder = self.folder(name)
         text = (folder / "SKILL.md").read_text(encoding="utf-8-sig")
         parts = text.split("---", 2)
         if len(parts) != 3 or parts[0].strip():
@@ -41,7 +49,6 @@ class SkillLoader:
         return Skill(name, parts[2].strip(), metadata, macro or [])
 
     def index(self):
-        if not self.root.exists():
-            return []
+        names = {p.parent.name for root in (self.root, self.learned_root) for p in root.glob('*/SKILL.md')}
         return [{"name": skill.name, "description": skill.metadata["description"]}
-                for skill in (self.load(p.parent.name) for p in sorted(self.root.glob("*/SKILL.md")))]
+                for skill in (self.load(name) for name in sorted(names))]

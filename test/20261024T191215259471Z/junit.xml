@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="23" time="24.906" timestamp="2026-10-25T00:42:16.033636+05:30" hostname="LAPTOP-G3OBD8SU"><testcase classname="tests.generality.test_general_agent" name="test_natural_answer_saved_with_usage_and_replay[chat]" time="0.223" /><testcase classname="tests.generality.test_general_agent" name="test_natural_answer_saved_with_usage_and_replay[messages]" time="0.067" /><testcase classname="tests.generality.test_general_agent" name="test_empty_model_response_has_explanation_and_budget_is_bounded" time="0.076" /><testcase classname="tests.generality.test_general_agent" name="test_learn_then_execute_new_skill_with_same_harness" time="0.217" /><testcase classname="tests.generality.test_general_agent" name="test_skill_overlay_preserves_gates_macro_and_rejects_secrets" time="0.029" /><testcase classname="tests.generality.test_general_agent" name="test_restored_skill_gates_and_disabled_learning" time="0.116" /><testcase classname="tests.generality.test_general_agent" name="test_handoff_pauses_then_reply_returns_to_model" time="0.151" /><testcase classname="tests.generality.test_general_agent" name="test_extract_workbook_and_pdf_respects_workspace" time="2.683" /><testcase classname="tests.unit.test_core" name="test_skill_loader_and_bind" time="0.009" /><testcase classname="tests.unit.test_core" name="test_state_crash_reconciliation_and_redaction" time="0.031" /><testcase classname="tests.unit.test_core" name="test_macro_failed_checkpoint_recovers_then_resumes" time="2.048" /><testcase classname="tests.unit.test_core" name="test_stuck_guard_is_bounded" time="0.101" /><testcase classname="tests.unit.test_core" name="test_model_failover_and_malformed_repair" time="0.002" /><testcase classname="tests.unit.test_core" name="test_budget_and_gate_prevent_action" time="0.010" /><testcase classname="tests.unit.test_core" name="test_action_deadline_preserves_uncertain_intent" time="0.060" /><testcase classname="tests.unit.test_core" name="test_denied_handoff_stops_following_actions" time="0.033" /><testcase classname="tests.unit.test_core" name="test_pending_state_survives_process_termination" time="0.140" /><testcase classname="tests.web.test_conversation" name="test_followup_persists_transcript_and_refuses_uncertain_or_active_runs" time="0.090"><failure message="json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">tmp_path = WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-35/test_followup_persists_transcr0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000205965A8CB0&gt;
+
+    def test_followup_persists_transcript_and_refuses_uncertain_or_active_runs(tmp_path,monkeypatch):
+        monkeypatch.setenv('ANTHROPIC_API_KEY','fixture-only')
+        monkeypatch.delenv('DEEPSEEK_API_KEY',raising=False)
+        settings=Settings(tmp_path/'data',Path(__file__).resolve().parents[2]/'skills')
+        async def runner(config,goal,run_id=None,skill_name=None):
+            store=RunStore(config['runs']);state=store.load(run_id)
+            state.answer='Answer to '+state.goal
+            state.messages.append({'role':'assistant','text':state.answer})
+            state.status='completed';store.save(state);return state
+        def wait(client,run_id):
+            for _ in range(200):
+                detail=client.get('/api/sessions/'+run_id).json()
+                if detail['status']=='completed':return detail
+                time.sleep(.01)
+            raise AssertionError(detail)
+        with TestClient(create_app(settings,runner)) as client:
+&gt;           run=client.post('/api/sessions',json={'goal':'First question'},headers=HEADERS).json()['id']
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\web\test_conversation.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_models.py:832: in json
+    return jsonlib.loads(self.content, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\json\__init__.py:352: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\json\decoder.py:345: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;json.decoder.JSONDecoder object at 0x00000205F2DA4590&gt;
+s = 'Invalid host header', idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+&gt;           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\json\decoder.py:363: JSONDecodeError</failure></testcase><testcase classname="tests.web.test_conversation" name="test_freeze_disables_runtime_skill_writes" time="0.002" /><testcase classname="tests.web.test_gui" name="test_gui_local_ticket_and_schedule_controls" time="9.926" /><testcase classname="tests.web.test_gui" name="test_managed_browser_cookies_survive_restart" time="0.928" /><testcase classname="tests.web.test_gui" name="test_gui_general_agent_uses_server_provider" time="2.654" /><testcase classname="tests.web.test_gui" name="test_gui_answers_and_followup_survive_reload" time="4.265" /></testsuite></testsuites>

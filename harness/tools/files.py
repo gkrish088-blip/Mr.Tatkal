@@ -24,6 +24,36 @@ class FileTools:
             text = stream.read(max_chars + 1)
         return {'text': text[:max_chars], 'truncated': len(text) > max_chars}
 
+    async def extract(self, path: str, max_chars: int = 50000):
+        """Read PDF pages or workbook cells as data; no document macros are executed."""
+        if not 1 <= max_chars <= 500000:
+            raise ValueError('max_chars must be between 1 and 500000')
+        target = self.resolve(path)
+        def collect():
+            if target.suffix.lower() == '.pdf':
+                from pypdf import PdfReader
+                parts = (f'Page {i+1}\n{page.extract_text() or ""}' for i, page in enumerate(PdfReader(target).pages))
+            elif target.suffix.lower() == '.xlsx':
+                from openpyxl import load_workbook
+                workbook = load_workbook(target, read_only=True, data_only=True)
+                try:
+                    parts = (sheet.title + '\t' + '\t'.join('' if cell is None else str(cell) for cell in row)
+                             for sheet in workbook for row in sheet.iter_rows(values_only=True))
+                    return bounded(parts)
+                finally:
+                    workbook.close()
+            else:
+                raise ValueError('Extraction supports .pdf and .xlsx; use file_read for text or CSV')
+            return bounded(parts)
+        def bounded(parts):
+            text = ''
+            for part in parts:
+                text += part[:max_chars+1] + '\n'
+                if len(text) > max_chars:
+                    return {'text': text[:max_chars], 'truncated': True}
+            return {'text': text, 'truncated': False}
+        return await asyncio.to_thread(collect)
+
     async def write(self, path: str, text: str):
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)

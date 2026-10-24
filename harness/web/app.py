@@ -187,7 +187,10 @@ def create_app(settings=None, runner=None):
                 'timezone':settings.timezone,'browser':{'mode':settings.browser_mode,'headless':settings.browser_headless},
                 'storage':'Server local disk','active':manager.active,'scheduler_running':True,
                 'scheduler_errors':errors[-3:],'password_enabled':bool(settings.password),
-                'skills':SkillLoader(settings.skills_dir).index()}
+                'capabilities':{'desktop':settings.desktop_enabled,'browser_hosts':list(settings.browser_hosts),
+                                'workspace':str(settings.data_dir/'workspace'),
+                                'skill_writes':settings.skill_writes_enabled and not bool(settings.freeze_manifest)},
+                'skills':SkillLoader(settings.skills_dir, settings.data_dir/'skills').index()}
 
     @app.post('/api/check-model')
     async def check_model(payload: dict):
@@ -218,6 +221,10 @@ def create_app(settings=None, runner=None):
 
     @app.post('/api/sessions/{run_id}/resume',status_code=202)
     async def resume(run_id: str): manager.resume(run_id);return {'ok':True}
+
+    @app.post('/api/sessions/{run_id}/messages',status_code=202)
+    async def followup(run_id: str, payload: Reply):
+        return manager.followup(run_id, payload.value)
 
     @app.post('/api/sessions/{run_id}/reply/{request_id}')
     async def reply(run_id: str,request_id: str,payload: Reply):

@@ -28,6 +28,10 @@ class RunState:
     pending_action: dict | None = None
     macro_index: int = 0
     approvals: list = field(default_factory=list)
+    answer: str = ""
+    blocked_reason: str = ""
+    active_skills: list = field(default_factory=list)
+    messages: list = field(default_factory=list)
 
 
 class RunStore:
@@ -40,7 +44,7 @@ class RunStore:
         return self.root / run_id / "state.json"
 
     def create(self, goal, inputs=None):
-        state = RunState(str(uuid.uuid4()), goal, inputs or {})
+        state = RunState(str(uuid.uuid4()), goal, inputs or {}, messages=[{"role": "user", "text": goal}])
         self.save(state)
         return state
 

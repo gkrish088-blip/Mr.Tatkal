@@ -68,7 +68,7 @@ class BrowserTools:
 
     def _allowed(self, url):
         parsed = urlsplit(url)
-        return parsed.scheme in ('http', 'https') and parsed.hostname in self.allowed_hosts
+        return parsed.scheme in ('http', 'https') and bool(parsed.hostname) and ('*' in self.allowed_hosts or parsed.hostname in self.allowed_hosts)
 
     def register_secret(self, value):
         if value:

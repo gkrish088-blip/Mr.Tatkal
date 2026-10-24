@@ -22,6 +22,9 @@ class Decision:
     reason: str
     calls: list[ToolCall] = field(default_factory=list)
     done: bool = False
+    answer: str = ""
+    usage: dict = field(default_factory=dict)
+    model: str = ""
 
 
 class ToolRegistry:

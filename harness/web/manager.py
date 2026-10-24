@@ -54,7 +54,7 @@ class RunManager:
             self.settings.runtime(provider)
             if skill:
                 from harness.skillrt.loader import SkillLoader
-                SkillLoader(self.settings.skills_dir).load(skill)
+                SkillLoader(self.settings.skills_dir, self.settings.data_dir/'skills').load(skill)
         state=self.runs.create(goal,inputs or {})
         if mode=='demo':
             demo=self.demo.prepare(state.run_id,self.settings.internal_url)
@@ -69,7 +69,8 @@ class RunManager:
         state=self.runs.load(run_id)
         row.update(step=state.step,handoffs=state.handoffs,macro_index=state.macro_index,
                    runtime_status=state.status, pending_action=bool(state.pending_action),
-                   events=state.history[-100:])
+                   events=state.history[-100:], answer=state.answer, blocked_reason=state.blocked_reason,
+                   messages=state.messages, active_skills=state.active_skills)
         path=self.runs._path(run_id).parent
         channel=HumanChannel(path/'handoff.json')
         row['requests']=channel.pending()
@@ -105,6 +106,8 @@ class RunManager:
             import os
             redactor=Redactor([v for k,v in os.environ.items() if any(w in k for w in ('KEY','PASSWORD','TOKEN','SECRET')) and v])
             message='Stopped by operator' if isinstance(error,asyncio.CancelledError) else redactor.redact(f'{type(error).__name__}: {error}')
+            state.blocked_reason=message[:1000]
+            self.runs.save(state)
             self.store.update(run_id,status=state.status,finished=time.time(),error=message[:1000])
             RunLog(self.runs.root,run_id,redactor).summary(state)
             if isinstance(error,asyncio.CancelledError): raise
@@ -126,6 +129,22 @@ class RunManager:
             raise ValueError('Start a new local test; the mock service restarted')
         self.store.update(run_id,status='queued',finished=None,error=None)
         state.status='queued';self.runs.save(state);self.queue.put_nowait(run_id)
+
+    def followup(self, run_id, text):
+        row=self.store.get(run_id);state=self.runs.load(run_id)
+        if row['mode']!='agent' or row['status'] not in {'completed','blocked','failed','cancelled','limit_reached'} or state.pending_action:
+            raise ValueError('Wait for this agent turn to finish; uncertain actions require reconciliation')
+        if not text.strip():
+            raise ValueError('Message cannot be blank')
+        self.settings.runtime(row['provider'])
+        if not state.messages:
+            state.messages=[{'role':'user','text':state.goal}]
+        state.messages.append({'role':'user','text':text.strip()})
+        state.goal=text.strip();state.answer='';state.blocked_reason='';state.status='queued'
+        self.runs.save(state)
+        self.store.update(run_id,status='queued',started=None,finished=None,error=None,skill=None)
+        self.queue.put_nowait(run_id)
+        return self.store.get(run_id)
 
     async def reply(self, run_id, request_id, value):
         row=self.store.get(run_id)

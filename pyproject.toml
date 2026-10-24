@@ -7,7 +7,7 @@ name = "skill-computer-harness"
 version = "0.1.0"
 description = "A general-purpose, resumable computer-use agent taught through skills"
 requires-python = ">=3.11"
-dependencies = ["PyYAML>=6,<7", "httpx>=0.28,<1", "playwright>=1.48,<2", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "croniter>=6,<7", "psutil>=6,<8", "python-dotenv>=1,<2", "tzdata>=2025.2"]
+dependencies = ["PyYAML>=6,<7", "httpx>=0.28,<1", "playwright>=1.48,<2", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "croniter>=6,<7", "psutil>=6,<8", "python-dotenv>=1,<2", "tzdata>=2025.2", "pypdf>=5,<7", "openpyxl>=3.1,<4"]
 
 [project.optional-dependencies]
 desktop = ["mss>=10,<11", "pyautogui>=0.9.54", "keyring>=25,<26"]

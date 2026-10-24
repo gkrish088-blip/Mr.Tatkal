@@ -9,7 +9,7 @@ from harness.core.verify import verify
 
 
 class Engine:
-    def __init__(self, registry, store, log, loader, model=None, human=None, max_steps=100, max_seconds=300, gates=None):
+    def __init__(self, registry, store, log, loader, model=None, human=None, max_steps=100, max_seconds=300, gates=None, skill_writes_enabled=True):
         self.registry, self.store, self.log, self.loader = registry, store, log, loader
         self.model, self.human = model, human
         self.max_steps, self.max_seconds = max_steps, max_seconds
@@ -17,18 +17,50 @@ class Engine:
         self.started = time.monotonic()
         self.active = []
         self.failures = {}
+        from harness.skillrt.writer import SkillWriter
+        writer = SkillWriter(loader, log.redactor, skill_writes_enabled)
+        registry.register('list_skills', self.list_skills, 'List available task skills and descriptions')
+        if skill_writes_enabled:
+            registry.register('create_skill', writer.create, 'Learn a reusable task from user instructions. Save Markdown with numbered steps, verification, and definition of done. Never save private data.')
+            registry.register('append_skill_note', writer.append_note, 'Append a reusable lesson to a skill after observing a verified outcome; preserve its gates and procedure')
         registry.register("use_skill", self.use_skill, "Load a skill's full instructions", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]})
         if human:
-            registry.register("ask_human", self.ask_human, "Pause and ask the operator", {"type": "object", "properties": {"kind": {"type": "string"}, "text": {"type": "string"}}, "required": ["kind", "text"]})
+            registry.register("ask_human", self.ask_human, "Pause and ask the operator through the handoff channel", {"type": "object", "properties": {"kind": {"type": "string", "enum": ["text", "choose", "approve", "external_approval"]}, "text": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}, "timeout": {"type": "number"}}, "required": ["kind", "text"]})
+
+    async def list_skills(self):
+        return {'skills': self.loader.index()}
 
     async def use_skill(self, name):
         skill = self.loader.load(name)
-        self.active.append(skill)
+        self.active = [s for s in self.active if s.name != name] + [skill]
         self.gates.update(skill.metadata.get("gates", []))
         return {"name": skill.name, "body": skill.body}
 
     async def ask_human(self, kind, text, **kwargs):
+        if 'attachments' not in kwargs:
+            observation = await self.observe()
+            kwargs['attachments'] = [observation['screenshot']] if observation.get('screenshot') else []
         return await self.human.ask(kind, text, **kwargs)
+
+    async def decide(self, state):
+        observation = await self.observe()
+        context = build_context(state, self.loader, self.active, observation)
+        context['capabilities'] = {**getattr(self.registry, 'capabilities', {}), 'tools': list(self.registry.tools)}
+        remaining = self.max_seconds - (time.monotonic() - self.started)
+        decision = await asyncio.wait_for(self.model.decide(context, self.registry.schemas()), timeout=max(.001, remaining))
+        usage = decision.usage
+        event = {'step': state.step, 'timestamp': int(time.time()*1000), 'phase': 'plan',
+                 'reason': decision.reason or 'The model returned no text or tool action.', 'tier': 'reason',
+                 'action': {'name': 'model_decision', 'arguments': {}},
+                 'result': {'ok': bool(decision.calls or decision.done), 'data': {'answer': decision.answer}, 'error': None},
+                 'verification': {'assertion': None, 'verdict': bool(decision.calls or decision.done)},
+                 'model': decision.model, 'tokens': usage.get('input_tokens', 0)+usage.get('output_tokens', 0),
+                 'usage': usage, 'latency': usage.get('latency', 0), 'before': observation, 'after': observation}
+        safe = self.log.redactor.redact(event)
+        self.log.append(safe)
+        state.history.append(safe)
+        self.store.save(state)
+        return decision
 
     async def observe(self):
         if self.registry.capture:
@@ -63,7 +95,7 @@ class Engine:
         if call.name in {"browser_type", "desktop_type_text"} and redactor:
             redactor.register(call.arguments.get("text"))
         state.pending_action = {"name": call.name, "fingerprint": hashlib.sha256(json.dumps(asdict(call), sort_keys=True).encode()).hexdigest()}
-        state.status = "acting"
+        state.status = "waiting_human" if call.name == 'ask_human' else "acting"
         self.store.save(state)  # uncertain actions are NEVER replayed blindly after a crash
         started = time.monotonic()
         if call.name == "ask_human":
@@ -98,6 +130,7 @@ class Engine:
         self.log.append(safe)
         state.history.append(safe)
         state.pending_action = None
+        state.active_skills = [s.name for s in self.active]
         state.status = "rejected" if state.status == "rejected" else "running"
         self.store.save(state)
         return result
@@ -107,7 +140,7 @@ class Engine:
             state.status = "blocked"
             self.store.save(state)
             return False
-        decision = await self.model.decide(build_context(state, self.loader, self.active, await self.observe()), self.registry.schemas())
+        decision = await self.decide(state)
         for call in decision.calls:
             result = await self.act(state, call, decision.reason)
             if not result.ok:
@@ -120,15 +153,22 @@ class Engine:
             self.store.save(state)
             return state
         self.started = time.monotonic()
+        state.answer = ''
+        state.blocked_reason = ''
+        for name in state.active_skills:
+            if name not in [s.name for s in self.active]:
+                await self.use_skill(name)
         recent = []
         recovered = False
         while state.step < self.max_steps and time.monotonic()-self.started < self.max_seconds:
-            context = build_context(state, self.loader, self.active, await self.observe())
-            decision = await self.model.decide(context, self.registry.schemas())
+            decision = await self.decide(state)
             if decision.done:
+                state.answer = self.log.redactor.redact(decision.answer or (decision.reason if decision.reason.strip() != 'DONE' else 'Task completed.'))
+                state.messages.append({'role': 'assistant', 'text': state.answer})
                 state.status = "completed"
                 break
             if not decision.calls:
+                state.blocked_reason = 'The model returned an empty response without a tool action. Retry or provide more detail.'
                 state.status = "blocked"
                 break
             for call in decision.calls:
@@ -150,6 +190,7 @@ class Engine:
                         if self.human:
                             await self.act(state, ToolCall("ask_human", {"kind": "text", "text": "Run is stuck. How should it recover?"}), "Request recovery guidance", "human")
                         state.status = "blocked"
+                        state.blocked_reason = 'Repeated actions made no progress after recovery. Review the last tool results and provide guidance.'
                         break
             if state.status in {"blocked", "rejected", "limit_reached", "needs_reconciliation"}:
                 break

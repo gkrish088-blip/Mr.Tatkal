@@ -61,13 +61,15 @@ async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
             from harness.tools.desktop import DesktopTools
             desktop = DesktopTools(enabled=True, artifact_dir=runs/state.run_id/'steps')
         install_tools(registry, Path(config.get('workspace','workspace')), browser=browser, desktop=desktop)
-        if browser:
+        if browser or desktop:
+            from harness.tools.observe import observe_computer
             async def capture():
-                return {**await browser.snapshot(), **await browser.screenshot()}
+                return await observe_computer(browser, desktop)
             registry.capture = capture
-        loader = SkillLoader(config.get('skills','skills'))
+        loader = SkillLoader(config.get('skills','skills'), config.get('learned_skills'))
         engine = Engine(registry, store, log, loader, model, human,
-                        config.get('max_steps',100), config.get('max_seconds',300))
+                        config.get('max_steps',100), config.get('max_seconds',300),
+                        skill_writes_enabled=config.get('skill_writes_enabled', True) and not config.get('freeze_manifest'))
         if state.pending_action:
             state.status = 'needs_reconciliation'
             store.save(state)
@@ -85,7 +87,7 @@ async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
         else:
             raise ValueError('Configure a model or select a macro skill')
         log.summary(state)
-        print(json.dumps({'run_id':state.run_id,'status':state.status,'steps':state.step}))
+        print(json.dumps({'run_id':state.run_id,'status':state.status,'steps':state.step,'answer':state.answer,'blocked_reason':state.blocked_reason}))
         return state
     finally:
         if polling:

@@ -1,5 +1,6 @@
 """Actual GUI browser -> server queue -> persistent agent browser -> approval -> ticket."""
 import asyncio
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 import socket
@@ -29,6 +30,14 @@ def gui_server(tmp_path):
     @app.post('/fixture/messages')
     async def model_fixture(request: Request):
         model_calls.append(await request.json())
+        content=model_calls[-1]['messages'][0]['content']
+        context=json.loads(content[0]['text'] if isinstance(content,list) else content)
+        if context['goal']=='List your skills.':
+            return {'content':[{'type':'text','text':'My available skills include '+', '.join(s['name'] for s in context['skills'])+'.'}],
+                    'usage':{'input_tokens':30,'output_tokens':15}}
+        if context['goal']=='Which skill helps fill a form?':
+            assert context['messages'][-2]['role']=='assistant'
+            return {'content':[{'type':'text','text':'Use web-form-fill. <script>window.unsafe=true</script>'}]}
         if len(model_calls)==1:
             return {'content':[{'type':'text','text':'Write the requested workspace note.'},
                     {'type':'tool_use','id':'fixture-write','name':'file_write','input':{'path':'gui-note.txt','text':'Written through the general agent GUI.'}}]}
@@ -143,4 +152,32 @@ async def test_gui_general_agent_uses_server_provider(gui_server,monkeypatch):
             await page.locator('#recent-list .session-row').wait_for()
             await page.locator('#live-badge').filter(has_text='COMPLETED').wait_for()
             assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
+        finally:await browser.close()
+
+
+async def test_gui_answers_and_followup_survive_reload(gui_server,monkeypatch):
+    base,cfg=gui_server
+    monkeypatch.setenv('ANTHROPIC_API_KEY','fixture-only')
+    monkeypatch.setenv('CLAUDE_BASE_URL',base+'/fixture')
+    monkeypatch.delenv('DEEPSEEK_API_KEY',raising=False)
+    async with async_playwright() as p:
+        browser=await p.chromium.launch(headless=True)
+        try:
+            page=await browser.new_page()
+            errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+            await page.goto(base)
+            await page.locator('#goal').fill('List your skills.')
+            await page.locator('#run-button').click()
+            await page.locator('#conversation .assistant').filter(has_text='web-form-fill').wait_for(timeout=20000)
+            assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
+            assert await page.locator('#session-steps').inner_text()=='0 steps'
+            await page.locator('#followup').fill('Which skill helps fill a form?')
+            await page.locator('#followup-button').click()
+            await page.locator('#conversation .assistant').filter(has_text='Use web-form-fill.').wait_for(timeout=20000)
+            assert await page.locator('#conversation .assistant').count()==2
+            assert await page.evaluate('window.unsafe') is None
+            await page.reload()
+            await page.locator('#conversation .assistant').filter(has_text='Use web-form-fill.').wait_for()
+            await page.screenshot(path=str(ROOT/'test/browser-artifacts/general-conversation.png'),full_page=True)
+            assert not errors
         finally:await browser.close()

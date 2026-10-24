@@ -56,14 +56,17 @@ async function renderDetail(){
   $('live-badge').outerHTML=`<span id="live-badge">${pill(s.requests.length?'waiting_human':s.status)}</span>`;
   $('session-steps').textContent=s.step+' steps';$('session-handoffs').textContent=s.handoffs+' handoffs';$('session-provider').textContent=s.mode==='demo'?'LOCAL MOCK · NO MODEL':s.provider.toUpperCase();
   $('stop-button').hidden=!['running','queued'].includes(s.status);$('resume-button').hidden=!['failed','blocked','cancelled','limit_reached'].includes(s.status)||s.pending_action;
-  $('session-error').hidden=!s.error;$('session-error').textContent=s.error||'';
+  const problem=s.error||s.blocked_reason;
+  $('session-error').hidden=!problem;$('session-error').textContent=problem||'';
+  $('conversation').innerHTML=(s.messages||[]).map(m=>`<div class="message ${m.role==='assistant'?'assistant':'user'}"><strong>${m.role==='assistant'?'Agent':'You'}</strong><div>${esc(m.text)}</div></div>`).join('');
+  $('followup-form').hidden=s.mode!=='agent'||!['completed','blocked','failed','cancelled','limit_reached'].includes(s.status)||s.pending_action;
   $('replay-link').hidden=!s.has_replay;$('replay-link').href=artifactUrl(s.id,'replay.html');
   let screenshot=[...s.events].reverse().find(e=>e.after?.screenshot)?.after.screenshot;
   if(screenshot){screenshot='steps/'+screenshot.replaceAll('\\','/').split('/').pop();}
   if(!screenshot)screenshot=s.artifacts.at(-1);
   $('screenshot').hidden=!screenshot;$('screenshot-placeholder').hidden=!!screenshot;
   if(screenshot){const url=artifactUrl(s.id,screenshot);if($('screenshot').getAttribute('src')!==url)$('screenshot').src=url;}
-  $('timeline').innerHTML=[...s.events].reverse().slice(0,30).map(e=>`<li class="${e.result.ok?'':'failed'}"><span class="step-number">${e.step}</span><span>${esc(e.reason)}<small>${esc(e.action.name)} · ${esc(e.tier)} · ${e.verification.verdict?'verified':'check failed'}</small></span></li>`).join('')||'<li>Queued. Waiting for the agent to begin.</li>';
+  $('timeline').innerHTML=[...s.events].reverse().slice(0,30).map(e=>`<li class="${e.result.ok?'':'failed'}"><span class="step-number">${e.phase==='plan'?'·':e.step}</span><span>${esc(e.reason)}<small>${esc(e.action.name)} · ${esc(e.tier)} · ${e.phase==='plan'?'model response':e.verification.verdict?'verified':'check failed'}</small></span></li>`).join('')||'<li>Waiting for the agent to begin.</li>';
   const box=$('handoff-box');box.hidden=!s.requests.length;
   const req=s.requests[0];
   if(req && box.dataset.request!==req.id){
@@ -103,6 +106,7 @@ $('run-form').addEventListener('submit',async event=>{event.preventDefault();$('
 $('demo-button').addEventListener('click',async()=>{$('demo-button').disabled=true;try{const result=await post('/sessions',{goal:'Rehearse a fictional booking from start to ticket',mode:'demo'});state.selected=result.id;switchView('overview');toast('Local test started. Approve the fictional payment when prompted.');await refresh();}catch(error){toast(error.message,true);}finally{$('demo-button').disabled=false;}});
 $('stop-button').addEventListener('click',async()=>{try{await post('/sessions/'+state.selected+'/stop');toast('Stop requested');await refresh();}catch(error){toast(error.message,true);}});
 $('resume-button').addEventListener('click',async()=>{try{await post('/sessions/'+state.selected+'/resume');toast('Session queued for resume');await refresh();}catch(error){toast(error.message,true);}});
+$('followup-form').addEventListener('submit',async event=>{event.preventDefault();$('followup-button').disabled=true;try{await post('/sessions/'+state.selected+'/messages',{value:$('followup').value});$('followup').value='';await refresh();}catch(error){toast(error.message,true);}finally{$('followup-button').disabled=false;}});
 $('schedule-kind').addEventListener('change',()=>{const cron=$('schedule-kind').value==='cron';$('once-fields').hidden=cron;$('cron-fields').hidden=!cron;});
 $('schedule-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const result=await post('/schedules',{goal:$('schedule-goal').value,mode:$('schedule-mode').value,provider:$('schedule-provider').value,skill:$('schedule-skill').value||null,inputs:readInputs('schedule-inputs'),kind:$('schedule-kind').value,when:$('schedule-when').value||null,cron:$('schedule-cron').value,timezone:$('schedule-timezone').value});toast('Schedule saved · '+result.timezone);await refresh();}catch(error){toast(error.message,true);}finally{button.disabled=false;}});
 $('session-search').addEventListener('input',renderSessions);

@@ -1,0 +1,20 @@
+.......F....................                                             [100%]
+================================== FAILURES ===================================
+______________ test_extract_workbook_and_pdf_respects_workspace _______________
+
+tmp_path = WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-34/test_extract_workbook_and_pdf_0')
+
+    async def test_extract_workbook_and_pdf_respects_workspace(tmp_path):
+>       from openpyxl import Workbook
+E       ModuleNotFoundError: No module named 'openpyxl'
+
+tests\generality\test_general_agent.py:146: ModuleNotFoundError
+============================== warnings summary ===============================
+..\..\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\testclient.py:1
+  C:\Users\Krish\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/generality/test_general_agent.py::test_extract_workbook_and_pdf_respects_workspace
+1 failed, 27 passed, 1 warning in 6.05s

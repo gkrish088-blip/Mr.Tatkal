@@ -33,8 +33,9 @@ class RunLog:
         from .replay import build_replay, read_events
         data = asdict(state) if is_dataclass(state) else dict(state)
         events = read_events(self.path)
-        reflex = sum(e.get("tier") == "reflex" for e in events)
-        latencies = sorted(float(e.get("latency", 0)) for e in events)
+        actions = [e for e in events if e.get('phase') != 'plan']
+        reflex = sum(e.get("tier") == "reflex" for e in actions)
+        latencies = sorted(float(e.get("latency", 0)) for e in events if e.get('phase') == 'plan')
         total_tokens = sum(e.get("tokens", 0) if isinstance(e.get("tokens", 0), (int, float))
                            else e["tokens"].get("total_tokens", 0) if isinstance(e.get("tokens"), dict) else 0
                            for e in events)
@@ -43,7 +44,9 @@ class RunLog:
                 f"Status: {data.get('status', 'unknown')}\n\n"
                 f"Goal: {data.get('goal', '')}\n\n"
                 f"Steps: {data.get('step', len(events))}\n\n"
-                f"Reflex share: {reflex / max(1, len(events)):.1%}\n\n"
+                f"Answer: {data.get('answer', '')}\n\n"
+                f"Blocked reason: {data.get('blocked_reason', '')}\n\n"
+                f"Reflex share: {reflex / max(1, len(actions)):.1%}\n\n"
                 f"Human handoffs: {data.get('handoffs', 0)}\n\n"
                 f"Tokens: {total_tokens}\n\n"
                 f"Latency p50/p95: {statistics.median(latencies) if latencies else 0:.3f}/{p95:.3f} s\n\n"

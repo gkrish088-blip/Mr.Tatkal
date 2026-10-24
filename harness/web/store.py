@@ -40,7 +40,7 @@ class SessionStore:
         return dict(row) if row else None
 
     def update(self, run_id, **fields):
-        if not fields or not set(fields)<= {'status','started','finished','error'}:
+        if not fields or not set(fields)<= {'status','started','finished','error','skill'}:
             raise ValueError('Invalid session update')
         with self.connect() as db:
             db.execute('UPDATE sessions SET '+','.join(k+'=?' for k in fields)+' WHERE id=?',(*fields.values(),run_id))

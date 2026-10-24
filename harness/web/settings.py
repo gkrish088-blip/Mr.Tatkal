@@ -27,6 +27,8 @@ class Settings:
     max_steps: int = 100
     max_seconds: int = 300
     provider: str = 'claude'
+    skill_writes_enabled: bool = True
+    freeze_manifest: str = ''
 
     @classmethod
     def from_env(cls, env_file='.env'):
@@ -42,7 +44,8 @@ class Settings:
                    cdp_url=os.getenv('CDP_URL',''),
                    browser_hosts=tuple(x.strip() for x in os.getenv('BROWSER_ALLOWED_HOSTS','localhost,127.0.0.1,::1').split(',') if x.strip()),
                    desktop_enabled=flag('DESKTOP_ENABLED'), max_steps=int(os.getenv('MAX_STEPS',100)),
-                   max_seconds=int(os.getenv('MAX_SECONDS',300)), provider=os.getenv('LLM_PROVIDER','claude'))
+                   max_seconds=int(os.getenv('MAX_SECONDS',300)), provider=os.getenv('LLM_PROVIDER','claude'),
+                   skill_writes_enabled=flag('SKILL_WRITES_ENABLED', True), freeze_manifest=os.getenv('FREEZE_MANIFEST', ''))
 
     def validate(self):
         from zoneinfo import ZoneInfo
@@ -57,7 +60,7 @@ class Settings:
     def providers(self):
         return {
             'claude': {'base_url':os.getenv('CLAUDE_BASE_URL','https://api.anthropic.com/v1'),
-                       'model':os.getenv('CLAUDE_MODEL','claude-sonnet-5-5'), 'key_env':'ANTHROPIC_API_KEY',
+                       'model':os.getenv('CLAUDE_MODEL','claude-haiku-4-5-20251001'), 'key_env':'ANTHROPIC_API_KEY',
                        'protocol':'messages','vision':True,'timeout':30},
             'deepseek': {'base_url':os.getenv('DEEPSEEK_BASE_URL','https://api.deepseek.com'),
                          'model':os.getenv('DEEPSEEK_MODEL','deepseek-flash'), 'key_env':'DEEPSEEK_API_KEY',
@@ -78,7 +81,9 @@ class Settings:
         for name,p in self.providers().items():
             if not demo and name!=provider and os.getenv(p['key_env']): models.append(p)
         return {'runs':str(self.data_dir/'runs'), 'workspace':str(self.data_dir/'workspace'),
-                'skills':str(self.skills_dir), 'models':models,
+                'skills':str(self.skills_dir), 'learned_skills':str(self.data_dir/'skills'), 'models':models,
+                'skill_writes_enabled':self.skill_writes_enabled and not bool(self.freeze_manifest),
+                'freeze_manifest':self.freeze_manifest,
                 'max_steps':self.max_steps,'max_seconds':self.max_seconds,
                 'browser':{'mode':self.browser_mode, 'cdp_url':self.cdp_url,
                            'headless':self.browser_headless,
