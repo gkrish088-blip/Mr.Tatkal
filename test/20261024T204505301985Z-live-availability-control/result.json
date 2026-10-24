@@ -1,0 +1,21 @@
+{
+  "started": "2026-10-24T20:45:05.304286+00:00",
+  "command": "BrowserTools public listing -> exact observed Available 895 control on normal 2S #12054 -> inspect panel",
+  "scope": "Watching-human public fare inspection. No credentials/passenger data or payment.",
+  "result": "availability_text_clicked",
+  "network": {
+    "blocked_hosts": [
+      "assets.adobedtm.com",
+      "connect.facebook.net",
+      "dpm.demdex.net",
+      "fonts.gstatic.com",
+      "metrics.makemytrip.com",
+      "o162542.ingest.us.sentry.io",
+      "promos.makemytrip.com"
+    ],
+    "failed_requests": []
+  },
+  "has_book_now": false,
+  "limitations": "A click is not current availability or a confirmed booking.",
+  "finished": "2026-10-24T20:45:10.227563+00:00"
+}

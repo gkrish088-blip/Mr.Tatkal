@@ -1,0 +1,18 @@
+{
+  "started": "2026-10-24T20:35:51.593186+00:00",
+  "command": "One HTTPModel.decide request with compacted public live-listing context and actual tool schemas; returned tools are NOT executed",
+  "scope": "Real provider context acceptance only. No browser action, login, booking or payment.",
+  "original_elements": 723,
+  "current_view_elements": 72,
+  "context_bytes": 51334,
+  "result": "provider_accepted_context",
+  "usage": {
+    "input_tokens": 29733,
+    "output_tokens": 283,
+    "latency": 5.161550799995894
+  },
+  "proposed_tools": [
+    "browser_scroll"
+  ],
+  "finished": "2026-10-24T20:35:56.757604+00:00"
+}

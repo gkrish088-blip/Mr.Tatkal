@@ -134,3 +134,47 @@ async def test_observed_image_capture_document_download_and_page_pdf(tmp_path):
             assert 'Fictional ticket confirmed' in text and 'MOCK-ONLY' in text
         finally:
             await chromium.close()
+
+
+async def test_snapshot_bounds_visible_controls_and_removes_stale_refs(tmp_path):
+    async with async_playwright() as p:
+        chromium=await p.chromium.launch(headless=True)
+        try:
+            page=await chromium.new_page(viewport={'width':800,'height':600})
+            tools=BrowserTools(page,artifact_dir=tmp_path)
+            await page.set_content('<button>At top</button><div style="margin-top:3000px"><button>At bottom</button></div>')
+            before=await tools.snapshot()
+            top=next(e['ref'] for e in before['elements'] if e['name']=='At top')
+            assert not any(e['name']=='At bottom' for e in before['elements'])
+            assert 'At top' in before['viewport_text'] and 'At bottom' not in before['viewport_text']
+            await page.get_by_text('At bottom',exact=True).scroll_into_view_if_needed()
+            after=await tools.snapshot()
+            assert any(e['name']=='At bottom' for e in after['elements'])
+            assert 'At bottom' in after['viewport_text'] and 'At top' not in after['viewport_text']
+            assert await page.locator(f'[data-harness-ref="{top}"]').count()==0
+            await page.set_content(''.join(f'<button style="position:fixed;top:0;left:0">Dense {i}</button>' for i in range(250)))
+            dense=await tools.snapshot()
+            assert len(dense['elements'])==200 and dense['elements_truncated'] is True
+            assert 'value' not in dense['elements'][0]
+        finally:
+            await chromium.close()
+
+
+async def test_scroll_uses_pixels_and_targets_nested_content_panel(tmp_path):
+    async with async_playwright() as p:
+        chromium=await p.chromium.launch(headless=True)
+        try:
+            page=await chromium.new_page(viewport={'width':800,'height':600})
+            tools=BrowserTools(page,artifact_dir=tmp_path)
+            await page.set_content('''<style>body{margin:0;overflow:hidden}header{height:80px}
+                #panel{margin-left:30%;height:500px;overflow:auto}</style><header>Fixed header</header>
+                <div id="panel"><div style="height:2500px">Scrollable results</div></div>''')
+            await tools.scroll(500)
+            first=await page.locator('#panel').evaluate('(e) => e.scrollTop')
+            assert first>=450
+            await tools.scroll(-200,x=600,y=200)
+            second=await page.locator('#panel').evaluate('(e) => e.scrollTop')
+            assert 150 <= first-second <= 250
+            with pytest.raises(ValueError): await tools.scroll(500,x=10)
+        finally:
+            await chromium.close()

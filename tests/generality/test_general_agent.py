@@ -26,6 +26,27 @@ def runtime(tmp_path, model=None, human=None, **kwargs):
     return Engine(registry,store,log,loader,model,human,**kwargs),state
 
 
+def test_large_browser_history_is_compact_without_losing_current_refs_or_file_results(tmp_path):
+    from harness.core.context import build_context
+    engine,state=runtime(tmp_path)
+    large={'url':'http://localhost/list','text':'Public page '*3000,
+           'elements':[{'ref':f'e{i:x}','name':'Option '*50} for i in range(1000)],'screenshot':'large.png'}
+    state.history=[{'step':1,'reason':'Open a large list','action':{'name':'browser_goto','arguments':{}},
+                    'result':{'ok':True,'data':large},'verification':{'verdict':True},'before':large,'after':large},
+                   {'step':2,'reason':'Read the file','action':{'name':'file_read','arguments':{}},
+                    'result':{'ok':True,'data':{'text':'File contents must remain available'}},
+                    'verification':{'verdict':True},'before':large,'after':large}]
+    current={'url':'http://localhost/list','elements':[{'ref':'eabc','name':'Current option'}],'text':'Current view','screenshot':'current.png'}
+    context=build_context(state,engine.loader,[],current)
+    assert len(json.dumps(context)) < 15000
+    assert context['observation']['elements'][0]['ref']=='eabc'
+    assert context['history'][0]['result']['data']['element_count']==1000
+    assert 'elements' not in context['history'][0]['after']
+    assert context['history'][1]['after']['screenshot']=='large.png'
+    assert context['history'][1]['result']['data']['text']=='File contents must remain available'
+    assert len(state.history[0]['after']['elements'])==1000  # replay/state evidence is unchanged
+
+
 @pytest.mark.parametrize('protocol',['chat','messages'])
 async def test_natural_answer_saved_with_usage_and_replay(tmp_path,monkeypatch,protocol):
     monkeypatch.setenv('FIXTURE_KEY','fixture-only')

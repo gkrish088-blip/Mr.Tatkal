@@ -33,15 +33,23 @@ class RateLimiter:
 
 SNAPSHOT_SCRIPT = r'''() => {
  const counts = {}, elements = [];
- const visible = e => !!(e.getClientRects().length) && getComputedStyle(e).visibility !== 'hidden';
+ let visibleCount=0;
+ for(const e of document.querySelectorAll('[data-harness-ref]')) e.removeAttribute('data-harness-ref');
+ const visible = e => {
+   const r=e.getBoundingClientRect();
+   return !!e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' &&
+     r.bottom>0 && r.right>0 && r.top<innerHeight && r.left<innerWidth;
+ };
  for (const e of document.querySelectorAll('a,button,input,select,textarea,img,canvas,li,[role="img"],[role="button"],[role="textbox"],[role="option"],[role="gridcell"],[tabindex],[contenteditable="true"]')) {
-   if (!visible(e)) continue;
    const label = e.getAttribute('aria-label') || e.getAttribute('alt') ||
      (e.labels && [...e.labels].map(x => { const copy=x.cloneNode(true); for(const c of copy.querySelectorAll('input,select,textarea')) c.remove(); return copy.textContent.trim(); }).join(' ')) ||
      e.getAttribute('placeholder') || (e.tagName === 'INPUT' ? '' : e.innerText) || '';
    const role = e.getAttribute('role') || e.tagName.toLowerCase();
    const key = [role, label.trim(), e.type || '', e.getAttribute('name') || '', e.getAttribute('href') || ''].join('|');
    counts[key] = (counts[key] || 0) + 1;
+   if (!visible(e)) continue;
+   visibleCount++;
+   if(elements.length>=200) continue;
    // Stable across replacement of an element with identical semantic landmarks.
    let hash = 2166136261;
    for (const c of key + '|' + counts[key]) { hash ^= c.charCodeAt(0); hash = Math.imul(hash, 16777619); }
@@ -52,7 +60,18 @@ SNAPSHOT_SCRIPT = r'''() => {
      rect: {x:rect.x,y:rect.y,width:rect.width,height:rect.height},
      options: e.tagName === 'SELECT' ? [...e.options].map(o => ({label:o.label,value:o.value})) : undefined});
  }
- return {url: location.href, title: document.title, text: document.body.innerText.slice(0,20000), elements};
+ const viewportText=[], walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+ let node, inspected=0, textSize=0;
+ while((node=walker.nextNode()) && inspected++<5000 && textSize<6000) {
+   const text=node.textContent.trim();
+   if(!text || getComputedStyle(node.parentElement).visibility==='hidden') continue;
+   const range=document.createRange(); range.selectNodeContents(node);
+   const r=range.getBoundingClientRect();
+   if(r.width && r.height && r.bottom>0 && r.right>0 && r.top<innerHeight && r.left<innerWidth) {
+     const part=text.slice(0,2000); viewportText.push(part); textSize+=part.length;
+   }
+ }
+ return {url: location.href, title: document.title, viewport:{width:innerWidth,height:innerHeight}, text: document.body.innerText.slice(0,20000), viewport_text:viewportText.join('\n').slice(0,6000), elements, elements_truncated:visibleCount>200};
 }'''
 
 
@@ -220,9 +239,18 @@ class BrowserTools:
         await locator.select_option(value)
         return await self.snapshot()
 
-    async def scroll(self, amount: int = 500):
+    async def scroll(self, amount: int = 500, x: int = None, y: int = None):
         await self._guard()
+        viewport=await self.page.evaluate('() => ({width:innerWidth,height:innerHeight})')
+        if (x is None) != (y is None):
+            raise ValueError('Provide both pointer coordinates or neither')
+        x=int(viewport['width']*.75) if x is None else x
+        y=int(viewport['height']*.65) if y is None else y
+        if not 0 <= x < viewport['width'] or not 0 <= y < viewport['height']:
+            raise ValueError('Scroll pointer must be within the current viewport')
+        await self.page.mouse.move(x,y)
         await self.page.mouse.wheel(0, amount)
+        await self.page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
         return await self.snapshot()
 
     async def wait_for(self, text: str = None, ref: str = None, url: str = None, timeout: int = 10000):

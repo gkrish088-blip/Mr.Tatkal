@@ -1,0 +1,20 @@
+{
+  "started": "2026-10-24T20:44:03.944625+00:00",
+  "command": "BrowserTools public listing -> exact observed normal INR75 fare text -> inspect current availability panel",
+  "scope": "Watching-human public fare inspection only; no credentials/passenger input, booking or payment.",
+  "result": "observed_normal_price_text_clicked",
+  "network": {
+    "blocked_hosts": [
+      "assets.adobedtm.com",
+      "connect.facebook.net",
+      "dpm.demdex.net",
+      "fonts.gstatic.com",
+      "metrics.makemytrip.com",
+      "o162542.ingest.us.sentry.io",
+      "promos.makemytrip.com"
+    ],
+    "failed_requests": []
+  },
+  "limitations": "Clicking the observed public price did not establish a refreshed availability panel or full fare. Cached normal 2S text remains. No login, booking or payment pass.",
+  "finished": "2026-10-24T20:44:09.035903+00:00"
+}

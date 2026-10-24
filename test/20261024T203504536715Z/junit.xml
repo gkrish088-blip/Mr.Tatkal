@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="25" time="58.785" timestamp="2026-10-25T02:05:05.143105+05:30" hostname="LAPTOP-G3OBD8SU"><testcase classname="tests.unit.test_tools_browser" name="test_browser_real_dom_refs_actions_and_masked_screenshot" time="4.350" /><testcase classname="tests.unit.test_tools_browser" name="test_observed_image_capture_document_download_and_page_pdf" time="1.397" /><testcase classname="tests.unit.test_tools_browser" name="test_snapshot_bounds_visible_controls_and_removes_stale_refs" time="0.570" /><testcase classname="tests.generality.test_general_agent" name="test_large_browser_history_is_compact_without_losing_current_refs_or_file_results" time="0.127" /><testcase classname="tests.generality.test_general_agent" name="test_natural_answer_saved_with_usage_and_replay[chat]" time="0.103" /><testcase classname="tests.generality.test_general_agent" name="test_natural_answer_saved_with_usage_and_replay[messages]" time="0.075" /><testcase classname="tests.generality.test_general_agent" name="test_empty_model_response_has_explanation_and_budget_is_bounded" time="0.095" /><testcase classname="tests.generality.test_general_agent" name="test_empty_http_response_is_not_success[chat]" time="0.002" /><testcase classname="tests.generality.test_general_agent" name="test_empty_http_response_is_not_success[messages]" time="0.002" /><testcase classname="tests.generality.test_general_agent" name="test_observer_keeps_desktop_and_browser_evidence" time="0.002" /><testcase classname="tests.generality.test_general_agent" name="test_learn_then_execute_new_skill_with_same_harness" time="0.258" /><testcase classname="tests.generality.test_general_agent" name="test_skill_overlay_preserves_gates_macro_and_rejects_secrets" time="0.024" /><testcase classname="tests.generality.test_general_agent" name="test_restored_skill_gates_and_disabled_learning" time="0.131" /><testcase classname="tests.generality.test_general_agent" name="test_handoff_pauses_then_reply_returns_to_model" time="0.186" /><testcase classname="tests.generality.test_general_agent" name="test_notification_uses_configured_channel_without_a_handoff" time="0.022" /><testcase classname="tests.generality.test_general_agent" name="test_static_browser_does_not_block_successful_file_work" time="0.327" /><testcase classname="tests.generality.test_general_agent" name="test_extract_workbook_and_pdf_respects_workspace" time="0.471" /><testcase classname="tests.unit.test_model_vision" name="test_latest_two_images_sent_in_provider_format[chat]" time="0.008" /><testcase classname="tests.unit.test_model_vision" name="test_latest_two_images_sent_in_provider_format[messages]" time="0.007" /><testcase classname="tests.web.test_gui" name="test_gui_local_ticket_and_schedule_controls" time="10.766" /><testcase classname="tests.web.test_gui" name="test_managed_browser_cookies_survive_restart" time="0.929" /><testcase classname="tests.web.test_gui" name="test_gui_general_agent_uses_server_provider" time="20.814"><failure message="AssertionError: assert 'COMPLETED' in 'FAILED'">gui_server = ('http://127.0.0.1:47533', Settings(data_dir=WindowsPath('C:/Users/Krish/AppData/Local/Temp/pytest-of-Krish/pytest-54/...claude', skill_writes_enabled=True, freeze_manifest='', triggers_file='', telegram_enabled=False, telegram_chat_id=''))
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000025437021B00&gt;
+
+    async def test_gui_general_agent_uses_server_provider(gui_server,monkeypatch):
+        base,cfg=gui_server
+        canary='fixture-server-owned-claude-canary'
+        monkeypatch.setenv('ANTHROPIC_API_KEY',canary)
+        monkeypatch.setenv('CLAUDE_BASE_URL',base+'/fixture')
+        monkeypatch.delenv('DEEPSEEK_API_KEY',raising=False)
+        async with async_playwright() as p:
+            browser=await p.chromium.launch(headless=True)
+            try:
+                page=await browser.new_page(viewport={'width':1360,'height':950})
+                await page.goto(base)
+                from harness.skillrt.loader import SkillLoader
+                from harness.skillrt.writer import SkillWriter
+                from harness.log.redact import Redactor
+                await SkillWriter(SkillLoader(ROOT/'skills',cfg.data_dir/'skills'),Redactor()).create('gui-learned','A newly learned fixture task','# Goal\nWrite a local note.')
+                await page.locator('#goal').fill('Create gui-note.txt with a short note in the workspace.')
+                await page.locator('#run-button').click()
+                deadline=time.monotonic()+20
+                while time.monotonic()&lt;deadline:
+                    if 'COMPLETED' in await page.locator('#live-badge').inner_text():break
+                    await asyncio.sleep(.2)
+&gt;               assert 'COMPLETED' in await page.locator('#live-badge').inner_text()
+E               AssertionError: assert 'COMPLETED' in 'FAILED'
+
+tests\web\test_gui.py:165: AssertionError</failure></testcase><testcase classname="tests.web.test_gui" name="test_gui_answers_and_followup_survive_reload" time="4.364" /><testcase classname="tests.integration.test_browser_workflow" name="test_generic_engine_skill_macro_local_ticket[TATKAL]" time="6.417" /><testcase classname="tests.integration.test_browser_workflow" name="test_generic_engine_skill_macro_local_ticket[GENERAL]" time="6.439" /></testsuite></testsuites>

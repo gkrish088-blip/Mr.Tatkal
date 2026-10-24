@@ -30,8 +30,16 @@ def install_tools(registry, workspace, browser=None, desktop=None):
         registry.register('file_' + name, getattr(files, name), 'Workspace-confined file ' + name)
     registry.register('clock_wait_until', clock.wait_until, 'Wait for timezone-aware timestamp')
     if browser:
+        descriptions={
+            'snapshot':'Inspect current viewport controls/viewport_text, full-page text, masked state and network diagnostics. Scroll to obtain refs for offscreen controls.',
+            'scroll':'Scroll by PIXELS, positive down and negative up; normally use 500 to 800, not 3 or 5 lines. Optional x,y target a nested scroll panel in the current screenshot.',
+            'click':'Click an observed e... reference, label:Exact label, or text:Exact text. CSS selectors are not accepted. References must identify one current element.',
+            'click_at':'Click a visible custom control at x,y PIXEL coordinates from the current viewport screenshot.',
+            'type':'Fill an observed editable field. private=true by default; use private=false only for public queries. sequential=true sends key events for autocomplete. Password fields stay private.',
+            'capture_element':'Capture an observed image, canvas or SVG to a run-owned image for handoff attachments.',
+        }
         for name in ('goto', 'snapshot', 'click', 'click_at', 'type', 'press', 'select', 'scroll', 'wait_for', 'screenshot', 'capture_element', 'tabs', 'select_tab', 'download', 'print_pdf', 'assert_json'):
-            registry.register('browser_' + name, getattr(browser, name), 'Browser ' + name)
+            registry.register('browser_' + name, getattr(browser, name), descriptions.get(name, 'Browser ' + name))
         registry.register('secret', SecretTools(browser, getattr(registry, 'redactor', None)).insert,
                           'Insert a named environment/keychain secret without returning it')
         registry.capture = browser.screenshot

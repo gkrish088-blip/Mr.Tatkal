@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-10-24T20:48:29.289654+00:00",
+  "command": "Real GUI/model public listing inspections, followed by POST /api/sessions/366f99e3-0799-4747-a26a-a775d1cf3253/messages to open provider login and call ask_human",
+  "result": "Awaiting watching owner provider sign-in; not a login, payment or booking pass.",
+  "runs": [
+    {
+      "run_id": "be916251-8a56-4efa-94b6-95929d19e94b",
+      "status": "failed",
+      "tool_actions": 1,
+      "model_decisions": 1,
+      "pending_action": null
+    },
+    {
+      "run_id": "67362ac8-8450-4d92-8853-80c3305eed7d",
+      "status": "cancelled",
+      "tool_actions": 16,
+      "model_decisions": 16,
+      "pending_action": null
+    },
+    {
+      "run_id": "366f99e3-0799-4747-a26a-a775d1cf3253",
+      "status": "waiting_human",
+      "tool_actions": 4,
+      "model_decisions": 6,
+      "pending_action": "ask_human"
+    }
+  ],
+  "verified": "Live public train listing and cached candidate lead observed. Compacted model context accepted by real provider in a separate one-request check. Actual ask_human request persisted and visible in the GUI.",
+  "limitations": "No refreshed normal-fare availability/full payable total established. A prior model turn ended with text announcing further action; its completed status means the turn ended, not that booking succeeded. Exact public price/availability text clicks did not establish the booking panel. No account credentials or passenger data submitted; no real payment request, payable QR or ticket created."
+}
