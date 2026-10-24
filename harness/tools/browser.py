@@ -60,9 +60,10 @@ SNAPSHOT_SCRIPT = r'''() => {
      rect: {x:rect.x,y:rect.y,width:rect.width,height:rect.height},
      options: e.tagName === 'SELECT' ? [...e.options].map(o => ({label:o.label,value:o.value})) : undefined});
  }
- const viewportText=[], walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+ const body=document.body;
+ const viewportText=[], walker=body ? document.createTreeWalker(body,NodeFilter.SHOW_TEXT) : null;
  let node, inspected=0, textSize=0;
- while((node=walker.nextNode()) && inspected++<5000 && textSize<6000) {
+ while(walker && (node=walker.nextNode()) && inspected++<5000 && textSize<6000) {
    const text=node.textContent.trim();
    if(!text || getComputedStyle(node.parentElement).visibility==='hidden') continue;
    const range=document.createRange(); range.selectNodeContents(node);
@@ -71,7 +72,7 @@ SNAPSHOT_SCRIPT = r'''() => {
      const part=text.slice(0,2000); viewportText.push(part); textSize+=part.length;
    }
  }
- return {url: location.href, title: document.title, viewport:{width:innerWidth,height:innerHeight}, text: document.body.innerText.slice(0,20000), viewport_text:viewportText.join('\n').slice(0,6000), elements, elements_truncated:visibleCount>200};
+ return {url: location.href, title: document.title, viewport:{width:innerWidth,height:innerHeight}, text: body ? body.innerText.slice(0,20000) : '', viewport_text:viewportText.join('\n').slice(0,6000), elements, elements_truncated:visibleCount>200, body_missing:!body};
 }'''
 
 
@@ -168,14 +169,25 @@ class BrowserTools:
         await self._guard()
         if self.page.url != 'about:blank' and not self._allowed(self.page.url):
             raise PermissionError('Current page is outside the browser allowlist')
-        data = self._clean(await self.page.evaluate(SNAPSHOT_SCRIPT))
-        data['network'] = {'blocked_hosts':sorted(self._blocked_hosts), 'failed_requests':list(self._network_errors)}
-        # Masked fields still change the observed state. Use a per-browser keyed hash so
-        # low-entropy private values cannot be recovered by guessing their digest.
-        fields = await self.page.evaluate("() => [...document.querySelectorAll('input,textarea,select')].map(e => [e.name,e.value,e.checked])")
-        private_digest = hmac.new(self._state_key,json.dumps(fields).encode(),'sha256').hexdigest()
-        data['state_hash'] = hashlib.sha256((str(data)+private_digest).encode()).hexdigest()
-        return data
+        for attempt in range(2):
+            try:
+                data = self._clean(await self.page.evaluate(SNAPSHOT_SCRIPT))
+                data['network'] = {'blocked_hosts':sorted(self._blocked_hosts), 'failed_requests':list(self._network_errors)}
+                # Masked fields still change the observed state. Use a per-browser keyed hash so
+                # low-entropy private values cannot be recovered by guessing their digest.
+                fields = await self.page.evaluate("() => [...document.querySelectorAll('input,textarea,select')].map(e => [e.name,e.value,e.checked])")
+                private_digest = hmac.new(self._state_key,json.dumps(fields).encode(),'sha256').hexdigest()
+                data['state_hash'] = hashlib.sha256((str(data)+private_digest).encode()).hexdigest()
+                return data
+            except Exception as error:
+                message=str(error).lower()
+                navigation_race=('execution context was destroyed' in message or
+                                 "parameter 1 is not of type 'node'" in message)
+                if attempt or not navigation_race:
+                    raise
+                # A redirected page can replace its document between navigation and
+                # observation. Retry once after the new document has a chance to settle.
+                await asyncio.sleep(0.25)
 
     async def _ref(self, ref):
         # Declarative macros can bind semantic landmarks before their first snapshot.

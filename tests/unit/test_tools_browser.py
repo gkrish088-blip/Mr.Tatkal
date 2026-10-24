@@ -6,6 +6,7 @@ import pytest
 from playwright.async_api import async_playwright
 
 from harness.tools.browser import BrowserTools
+from harness.tools.browser import SNAPSHOT_SCRIPT
 
 
 HTML = b'''<!doctype html><title>Sandbox form</title>
@@ -165,6 +166,47 @@ async def test_snapshot_bounds_visible_controls_and_removes_stale_refs(tmp_path)
             dense=await tools.snapshot()
             assert len(dense['elements'])==200 and dense['elements_truncated'] is True
             assert 'value' not in dense['elements'][0]
+        finally:
+            await chromium.close()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_tolerates_missing_body_and_retries_navigation_race(tmp_path):
+    async with async_playwright() as p:
+        chromium=await p.chromium.launch(headless=True)
+        try:
+            page=await chromium.new_page()
+            await page.set_content('<!doctype html><html><head><title>Loading</title></head><body><button>Ready</button></body></html>')
+            tools=BrowserTools(page,artifact_dir=tmp_path)
+
+            await page.evaluate('() => document.body.remove()')
+            bodyless=await tools.snapshot()
+            assert bodyless['body_missing'] is True
+            assert bodyless['text']=='' and bodyless['elements']==[]
+
+            await page.set_content('<!doctype html><html><body><button>After navigation</button></body></html>')
+            real_evaluate=page.evaluate
+            calls={'snapshot':0}
+
+            class NavigationRacePage:
+                context=page.context
+
+                @property
+                def url(self):
+                    return page.url
+
+                async def evaluate(self, expression):
+                    if expression==SNAPSHOT_SCRIPT and calls['snapshot']==0:
+                        calls['snapshot']+=1
+                        raise RuntimeError('Page.evaluate: Execution context was destroyed, most likely because of a navigation')
+                    if expression==SNAPSHOT_SCRIPT:
+                        calls['snapshot']+=1
+                    return await real_evaluate(expression)
+
+            tools.page=NavigationRacePage()
+            recovered=await tools.snapshot()
+            assert calls['snapshot']==2
+            assert any(e['name']=='After navigation' for e in recovered['elements'])
         finally:
             await chromium.close()
 
