@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-10-24T23:15:32Z",
+  "scope": "Watching-owner live IRCTC access retry after the owner reported VPN disabled. No passenger data was entered and no credentials were submitted to IRCTC.",
+  "commands": [
+    "BrowserTools.launch(channel=chrome, headless=False); navigate to official IRCTC train-search page; wait 3 seconds; snapshot and screenshot",
+    "Submit the project irctc-book-ticket agent through the local session API; inspect redacted session status and action metadata"
+  ],
+  "public_page_probe": {
+    "result": "loaded",
+    "host": "www.irctc.co.in",
+    "path": "/nget/train-search",
+    "visible_controls": 20,
+    "general_quota_visible": true,
+    "search_trains_visible": true,
+    "failed_application_requests": 0,
+    "limitations": "A public page load proves neither authentication nor ticket availability. Several third-party hosts remained blocked; no application request failures were recorded."
+  },
+  "agent_runs": [
+    {
+      "run_id": "7c1400a2-ce74-4a02-91fd-5afa3d312258",
+      "status": "needs_reconciliation",
+      "last_stage": "initial navigation and snapshot",
+      "failure": "Execution context was destroyed during browser observation",
+      "credentials_submitted": false
+    },
+    {
+      "run_id": "7d65fc78-430f-43af-b621-1e2bc4bc1e8a",
+      "status": "cancelled",
+      "last_stage": "IRCTC home page; login/register menu visible",
+      "failure": "Repeated invalid DOM element references while choosing sign-in controls",
+      "credentials_submitted": false,
+      "tool_actions": 48
+    },
+    {
+      "run_id": "ebd2f831-e342-4c44-9e06-e52e784d1a35",
+      "status": "needs_reconciliation",
+      "last_stage": "initial navigation and snapshot",
+      "failure": "Snapshot attempted to create a text walker while document.body was missing",
+      "credentials_submitted": false
+    }
+  ],
+  "result": "VPN-off public page reached; agent booking attempt blocked by transient page-snapshot failures and invalid sign-in references.",
+  "limitations": "No login, CAPTCHA/OTP, train results, passenger review, payment request, QR, PNR, or ticket was verified. Credential values are stored only in Windows Credential Manager and are excluded from this record. The native Windows Computer Use helper failed initialization; project runs used the managed Playwright browser."
+}

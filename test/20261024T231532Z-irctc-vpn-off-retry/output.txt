@@ -1,0 +1,6 @@
+Public IRCTC BrowserTools probe: booking/search page loaded; 20 visible controls; no failed application requests.
+Agent 7c1400a2: needs_reconciliation during navigation snapshot; no credentials entered.
+Agent 7d65fc78: cancelled after 48 tool actions with repeated invalid element references; no credentials entered.
+Agent ebd2f831: needs_reconciliation because document.body was unavailable to snapshot; no credentials entered.
+No login, booking, passenger data entry, payment, QR, PNR, or ticket verified.
+Native CUA helper initialization error: failed to write kernel assets (os error 3).
