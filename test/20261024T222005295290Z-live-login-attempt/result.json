@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-10-24T22:20:05.322661+00:00",
+  "command": "GUI login-only task 7fec1356-80e6-4dc4-bda7-ce6cf5499bbc with named Windows keychain secret; inspect redacted run evidence",
+  "result": "Phone inserted and Continue clicked once; no verification screen established.",
+  "status": "blocked",
+  "steps": 14,
+  "secret_insertions": 1,
+  "clicks": [
+    {
+      "target": "Enter Mobile Number",
+      "ok": true
+    },
+    {
+      "target": "CONTINUE",
+      "ok": true
+    }
+  ],
+  "limitations": "OTP delivery is unknown; owner was asked whether one arrived. Do not resend automatically. No OTP was entered, no provider/railway login was verified, and no booking, payment or payable QR was created. Credential/passenger values are deliberately excluded."
+}

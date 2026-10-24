@@ -26,7 +26,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 @pytest.mark.asyncio
-async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
+async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path,monkeypatch):
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -67,6 +67,15 @@ async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
             assert option['rect']['width']>0 and option['readonly'] is False
             await tools.click(option['ref'])
             assert 'Option selected' in (await tools.snapshot())['text']
+            from harness.tools.secrets import SecretTools
+            from harness.log.redact import Redactor
+            monkeypatch.setenv('TEST_PRIVATE_KEYUP','PRIVATE-KEYUP-CANARY')
+            await page.evaluate("() => document.querySelector('input[type=password]').onkeyup = e => document.querySelector('#status').textContent=e.target.value")
+            redactor=Redactor()
+            inserted=await SecretTools(tools,redactor).insert('TEST_PRIVATE_KEYUP','label:Password',sequential=True)
+            assert inserted=={'inserted':True}
+            assert 'PRIVATE-KEYUP-CANARY' not in str(await tools.snapshot())
+            assert redactor.redact('PRIVATE-KEYUP-CANARY')=='[REDACTED]'
             assert before_hash != (await tools.screenshot())['state_hash']
             await tools.select(refs['Choice'], 'b')
             evidence = await tools.screenshot()

@@ -41,7 +41,7 @@ def install_tools(registry, workspace, browser=None, desktop=None):
         for name in ('goto', 'snapshot', 'click', 'click_at', 'type', 'press', 'select', 'scroll', 'wait_for', 'screenshot', 'capture_element', 'tabs', 'select_tab', 'download', 'print_pdf', 'assert_json'):
             registry.register('browser_' + name, getattr(browser, name), descriptions.get(name, 'Browser ' + name))
         registry.register('secret', SecretTools(browser, getattr(registry, 'redactor', None)).insert,
-                          'Insert a named environment/keychain secret without returning it')
+                          'Insert a named environment/keychain secret privately without returning it. sequential=true sends key events for reactive input controls.')
         registry.capture = browser.screenshot
     if desktop:
         for name in ('click', 'double_click', 'drag', 'scroll', 'type_text', 'hotkey', 'launch_app', 'focus_window', 'screenshot', 'a11y_tree'):
