@@ -1,0 +1,11 @@
+{
+  "command": [
+    "C:\\Users\\Krish\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+    "test\\20261024T222522671613Z-failure-report-docs\\check.py"
+  ],
+  "started": "2026-10-24T22:25:35.526629+00:00",
+  "finished": "2026-10-24T22:25:36.053129+00:00",
+  "exit_code": 0,
+  "scope": "Documentation checks only: numbered reasons, relative evidence links and configured secret values. No application tests or live service actions.",
+  "limitations": "Checks known locally configured values only; not a general proof against every possible personal-data string."
+}
