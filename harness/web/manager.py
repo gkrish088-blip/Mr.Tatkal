@@ -77,6 +77,16 @@ class RunManager:
         row['requests']=channel.pending()
         row['artifacts']=[p.relative_to(path).as_posix() for p in path.rglob('*')
                           if p.is_file() and p.suffix.lower() in {'.png','.jpg','.jpeg'}]
+        row['downloads']=[p.relative_to(path).as_posix() for p in (path/'steps'/'downloads').glob('*.pdf')
+                          if p.is_file() and p.resolve().is_relative_to(path.resolve())]
+        # Expose only run-owned images. Never let a model attach arbitrary local files or URLs.
+        for request in row['requests']:
+            attachments=[]
+            for filename in request.get('attachments', []):
+                target=Path(filename).resolve()
+                if target.is_relative_to(path.resolve()) and target.is_file() and target.suffix.lower() in {'.png','.jpg','.jpeg'}:
+                    attachments.append(target.relative_to(path.resolve()).as_posix())
+            request['attachments']=attachments
         row['has_replay']=(path/'replay.html').exists()
         return row
 

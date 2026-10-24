@@ -119,6 +119,18 @@ async def test_transient_tool_failure_still_allows_recovery(tmp_path):
     assert 'request failed' in state.answer
 
 
+async def test_macro_permission_denial_does_not_invoke_model_recovery(tmp_path):
+    class NeverCalled:
+        async def decide(self, *args): raise AssertionError('Permission denial must not trigger model recovery')
+    eng, state = engine(tmp_path, NeverCalled())
+    async def denied(): raise PermissionError('Host not allowed')
+    eng.registry.register('denied', denied)
+    sk=eng.loader.load('example')
+    sk.macro=[{'tool':'denied','reason':'Navigate once','assert':{'text':'ready'}}]
+    result=await MacroRunner(eng).run(state,sk)
+    assert result.status=='blocked' and result.step==1 and result.macro_index==0
+
+
 async def test_model_failover_and_malformed_repair(monkeypatch):
     monkeypatch.setenv('TEST_MODEL_KEY','dummy')
     calls=[]

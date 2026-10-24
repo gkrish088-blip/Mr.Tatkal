@@ -71,6 +71,12 @@ The named `agent-data` volume retains sessions, browser state and jobs across co
 
 Set `BROWSER_ALLOWED_HOSTS` to every site and required dependency host the agent is allowed to use. Default access is localhost-only. Managed Chromium works on Linux/Windows. To attach an operator Chrome instead, use `BROWSER_MODE=cdp` and `CDP_URL`; native desktop tools remain optional and cannot control a laptop through a remote Linux container.
 
+For managed installed Chrome, set `BROWSER_CHANNEL=chrome` and `BROWSER_HEADLESS=false`. This uses ordinary installed Chrome with the dedicated project profile; it does not change browser fingerprints or bypass service blocks. Restart after editing `.env`. Permission denials stop the run with a configuration reason, including within macros.
+
+Human handoffs display their run-owned image attachments in the GUI, so an actual service payment image can be scanned or opened at full size. `browser_capture_element` captures an observed image/canvas; `ask_human` accepts its path in `attachments`. A gateway must actually offer a QR; the agent must not manufacture one. Embedded cross-origin payment frames are not exposed by element capture and may require operator assistance.
+
+`browser_download` saves actual service downloads under the run's `steps/downloads/`. `browser_print_pdf` prints the current observed page when the service offers a print view instead of a download. PDF files in that directory appear as download links in the session and are served as attachments with the same operator authentication as other artifacts. Raw state, unrelated files and PDF files outside that directory are not served. Ticket PDFs intentionally contain the booking's private details; keep DATA_DIR untracked.
+
 No remote deployment has been performed by this implementation. Container build/start needs Docker and operator credentials; actual provider, Telegram and live-site behavior still require their own checks.
 
 ## Tests

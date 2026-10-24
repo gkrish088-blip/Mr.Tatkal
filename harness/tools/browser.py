@@ -34,9 +34,9 @@ class RateLimiter:
 SNAPSHOT_SCRIPT = r'''() => {
  const counts = {}, elements = [];
  const visible = e => !!(e.getClientRects().length) && getComputedStyle(e).visibility !== 'hidden';
- for (const e of document.querySelectorAll('a,button,input,select,textarea,[role="button"],[role="textbox"],[contenteditable="true"]')) {
+ for (const e of document.querySelectorAll('a,button,input,select,textarea,img,canvas,[role="img"],[role="button"],[role="textbox"],[contenteditable="true"]')) {
    if (!visible(e)) continue;
-   const label = e.getAttribute('aria-label') ||
+   const label = e.getAttribute('aria-label') || e.getAttribute('alt') ||
      (e.labels && [...e.labels].map(x => { const copy=x.cloneNode(true); for(const c of copy.querySelectorAll('input,select,textarea')) c.remove(); return copy.textContent.trim(); }).join(' ')) ||
      e.getAttribute('placeholder') || (e.tagName === 'INPUT' ? '' : e.innerText) || '';
    const role = e.getAttribute('role') || e.tagName.toLowerCase();
@@ -102,11 +102,12 @@ class BrowserTools:
             await context.route('**/*', route_request)
             self._guarded_contexts.add(id(context))
 
-    async def launch(self, profile_dir: str, headless: bool = True):
+    async def launch(self, profile_dir: str, headless: bool = True, channel: str = None):
         from playwright.async_api import async_playwright
         self._playwright = await async_playwright().start()
         self._owned_context = await self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(Path(profile_dir).resolve()), headless=headless, viewport={'width':1280,'height':800})
+            user_data_dir=str(Path(profile_dir).resolve()), headless=headless, channel=channel,
+            viewport={'width':1280,'height':800})
         self.page = self._owned_context.pages[0] if self._owned_context.pages else await self._owned_context.new_page()
         await self._guard()
         return {'attached':True,'persistent':True}
@@ -227,6 +228,26 @@ class BrowserTools:
         return {'tabs': [{'index': i, 'url': self._clean(p.url)}
                          for i, p in enumerate(self.page.context.pages) if self._allowed(p.url)]}
 
+    async def capture_element(self, ref: str):
+        """Capture an observed image/canvas for a handoff without surrounding private text."""
+        locator = await self._ref(ref)
+        tag = await locator.evaluate('(e) => e.tagName.toLowerCase()')
+        if tag not in {'img', 'canvas', 'svg'}:
+            raise ValueError('Element capture requires an observed image or canvas')
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+        path = self.artifact_dir / f'{uuid.uuid4().hex}.png'
+        await locator.screenshot(path=str(path), timeout=10000)
+        return {'screenshot': str(path.resolve())}
+
+    async def print_pdf(self):
+        """Save the actual current page as PDF, rather than synthesizing a document."""
+        await self.snapshot()
+        folder = self.artifact_dir / 'downloads'
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f'{uuid.uuid4().hex}-page.pdf'
+        await self.page.pdf(path=str(path), print_background=True)
+        return {'path': str(path.resolve()), 'filename': path.name}
+
     async def assert_json(self, ref: str, expected: dict):
         """Verify a rendered JSON review against expected fields without returning private data."""
         import json
@@ -256,10 +277,11 @@ class BrowserTools:
         async with self.page.expect_download(timeout=30000) as pending:
             await locator.click()
         download = await pending.value
-        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+        folder = self.artifact_dir / 'downloads'
+        folder.mkdir(parents=True, exist_ok=True)
         # Never trust a server-supplied filename as an output path.
         name = Path(download.suggested_filename.replace('\\', '/')).name
-        path = self.artifact_dir / (uuid.uuid4().hex + '-' + name)
+        path = folder / (uuid.uuid4().hex + '-' + name)
         await download.save_as(path)
         return {'path': str(path.resolve()), 'filename': name}
 

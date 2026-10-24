@@ -66,6 +66,8 @@ async def test_gui_local_ticket_and_schedule_controls(gui_server):
             await page.get_by_role('button',name='Run local test').click()
             await page.get_by_role('button',name='Approve test',exact=True).wait_for(timeout=45000)
             assert 'fictional payment only' in await page.locator('#handoff-box').inner_text()
+            await page.locator('#handoff-box .handoff-image').wait_for()
+            assert await page.locator('#handoff-box .handoff-image').evaluate('(e) => e.complete && e.naturalWidth > 0')
             await page.get_by_role('button',name='Approve test',exact=True).click()
             deadline=time.monotonic()+30
             while 'COMPLETED' not in await page.locator('#live-badge').inner_text() and time.monotonic()<deadline:
@@ -84,6 +86,19 @@ async def test_gui_local_ticket_and_schedule_controls(gui_server):
                 assert response.status_code==200 and '<img ' in response.text
                 # A protected artifact route cannot reveal the session's raw state file.
                 assert (await client.get(base+'/api/sessions/'+rows[0]['id']+'/artifacts/state.json')).status_code==404
+                # A real local PDF artifact appears as a browser-download link.
+                from pypdf import PdfWriter
+                folder=cfg.data_dir/'runs'/rows[0]['id']/'steps'/'downloads'
+                folder.mkdir(parents=True,exist_ok=True)
+                writer=PdfWriter();writer.add_blank_page(width=200,height=200)
+                writer.write(folder/'fixture-document.pdf')
+            link=page.locator('#download-list a').filter(has_text='fixture-document.pdf')
+            await link.wait_for()
+            async with page.expect_download() as pending:
+                await link.click()
+            document=await pending.value
+            assert document.suggested_filename=='fixture-document.pdf'
+            assert Path(await document.path()).read_bytes().startswith(b'%PDF-')
             await page.get_by_role('button',name='Schedules',exact=True).click()
             await page.locator('#schedule-goal').fill('One future fictional test')
             await page.locator('#schedule-mode').select_option('demo')

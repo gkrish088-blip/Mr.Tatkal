@@ -1,0 +1,11 @@
+{
+  "started": "2026-10-24T20:00:38.929547+00:00",
+  "command": "BrowserTools.launch(channel=chrome, headless=False); navigate once to official train-search page",
+  "scope": "Installed Chrome, ordinary browser settings. No credentials submitted and no booking or payment.",
+  "title": "Error",
+  "has_login_landmark": false,
+  "elements": 0,
+  "result": "blocked_before_login",
+  "edge_error": true,
+  "finished": "2026-10-24T20:00:43.458671+00:00"
+}

@@ -69,3 +69,39 @@ async def test_browser_real_dom_refs_actions_and_masked_screenshot(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+async def test_observed_image_capture_document_download_and_page_pdf(tmp_path):
+    from pathlib import Path
+    from pypdf import PdfReader
+    import io
+    async with async_playwright() as p:
+        chromium = await p.chromium.launch(headless=True)
+        try:
+            page = await chromium.new_page()
+            tools = BrowserTools(page, artifact_dir=tmp_path/'steps')
+            async def fixture(route):
+                if route.request.url.endswith('/ticket.pdf'):
+                    await route.fulfill(body=b'%PDF-fixture-download', content_type='application/pdf',
+                                        headers={'Content-Disposition':'attachment; filename="ticket.pdf"'})
+                else:
+                    await route.fulfill(content_type='text/html', body='''<h1>Fictional ticket confirmed</h1>
+                    <p>PNR MOCK-ONLY</p><canvas aria-label="Fictional payment image" width="120" height="120"></canvas>
+                    <input aria-label="Private field" value="PRIVATE-CANARY"><a href="/ticket.pdf">Download ticket</a>''')
+            await page.route('http://localhost/**', fixture)
+            snap = await tools.goto('http://localhost/')
+            ref = next(e['ref'] for e in snap['elements'] if e['name']=='Fictional payment image')
+            image = await tools.capture_element(ref)
+            from PIL import Image
+            # Chromium rounds fractional CSS coordinates outwards when clipping.
+            assert all(120 <= size <= 121 for size in Image.open(image['screenshot']).size)
+            with pytest.raises(ValueError, match='image or canvas'):
+                await tools.capture_element('label:Private field')
+            downloaded = await tools.download('text:Download ticket')
+            assert Path(downloaded['path']).parent == tmp_path/'steps'/'downloads'
+            assert Path(downloaded['path']).read_bytes() == b'%PDF-fixture-download'
+            printed = await tools.print_pdf()
+            text = ''.join(p.extract_text() for p in PdfReader(io.BytesIO(Path(printed['path']).read_bytes())).pages)
+            assert 'Fictional ticket confirmed' in text and 'MOCK-ONLY' in text
+        finally:
+            await chromium.close()

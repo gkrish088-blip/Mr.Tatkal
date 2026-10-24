@@ -1,0 +1,14 @@
+{
+  "started": "2026-10-24T19:59:20.782031+00:00",
+  "command": "BrowserTools.launch(headless=False); goto official train-search page; inspect public login landmarks",
+  "scope": "One public page only. No credentials submitted, no login, no payment or booking.",
+  "public_page_loaded": true,
+  "title": "Error",
+  "has_login_landmark": false,
+  "access_denied": false,
+  "elements": 0,
+  "finished": "2026-10-24T19:59:26.598643+00:00",
+  "result": "blocked_before_login",
+  "observed_error": "An error occurred while processing your request. Edge error page; no login form.",
+  "limitations": "A public-page navigation is not a login or booking pass."
+}

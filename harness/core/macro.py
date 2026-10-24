@@ -31,7 +31,7 @@ class MacroRunner:
             call = ToolCall(call_data.get("tool", call_data.get("name")), call_data.get("arguments", call_data.get("args", {})))
             result = await self.engine.act(state, call, step.get("reason", f"Execute skill step {index+1}"), "reflex", step.get("assert", step.get("verify")))
             if not result.ok:
-                if state.status in {"needs_reconciliation", "limit_reached", "rejected"}:
+                if state.status in {"blocked", "needs_reconciliation", "limit_reached", "rejected"}:
                     return state
                 if not await self.engine.recover(state, skill):
                     return state

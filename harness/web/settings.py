@@ -21,6 +21,7 @@ class Settings:
     internal_url: str = 'http://127.0.0.1:8787'
     browser_mode: str = 'managed'
     browser_headless: bool = True
+    browser_channel: str = ''
     cdp_url: str = ''
     browser_hosts: tuple = ('localhost', '127.0.0.1', '::1')
     desktop_enabled: bool = False
@@ -44,6 +45,7 @@ class Settings:
                    cookie_secure=flag('COOKIE_SECURE'), timezone=os.getenv('TIMEZONE','Asia/Kolkata'),
                    internal_url=os.getenv('INTERNAL_URL','http://127.0.0.1:'+os.getenv('PORT','8787')),
                    browser_mode=os.getenv('BROWSER_MODE','managed'), browser_headless=flag('BROWSER_HEADLESS',True),
+                   browser_channel=os.getenv('BROWSER_CHANNEL',''),
                    cdp_url=os.getenv('CDP_URL',''),
                    browser_hosts=tuple(x.strip() for x in os.getenv('BROWSER_ALLOWED_HOSTS','localhost,127.0.0.1,::1').split(',') if x.strip()),
                    desktop_enabled=flag('DESKTOP_ENABLED'), max_steps=int(os.getenv('MAX_STEPS',100)),
@@ -92,6 +94,7 @@ class Settings:
                 'max_steps':self.max_steps,'max_seconds':self.max_seconds,
                 'browser':{'mode':self.browser_mode, 'cdp_url':self.cdp_url,
                            'headless':self.browser_headless,
+                           'channel':self.browser_channel or None,
                            'profile_dir':str(self.data_dir/('demo-browser-profile' if demo else 'browser-profile')),
                            'allowed_hosts':list(self.browser_hosts)},
                 'desktop':{'enabled':self.desktop_enabled and not demo}}

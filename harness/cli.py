@@ -42,7 +42,7 @@ async def run_goal(config, goal, inputs=None, run_id=None, skill_name=None):
         browser = BrowserTools(allowed_hosts=bc.get('allowed_hosts'), artifact_dir=runs/state.run_id/'steps')
         try:
             if bc.get('mode')=='managed':
-                await browser.launch(bc['profile_dir'], bc.get('headless',True))
+                await browser.launch(bc['profile_dir'], bc.get('headless',True), bc.get('channel'))
             else:
                 await browser.attach(bc['cdp_url'])
         except BaseException:

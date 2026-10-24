@@ -136,6 +136,41 @@ def test_server_owned_provider_selection(tmp_path,monkeypatch):
     assert cfg.runtime(demo=True)['models']==[]
 
 
+def test_run_owned_handoff_images_and_pdf_downloads_only(tmp_path):
+    from harness.handoff.channel import atomic_json
+    cfg=settings(tmp_path)
+    app=create_app(cfg,fixture_runner)
+    with TestClient(app) as client:
+        run=client.post('/api/sessions',json={'goal':'Artifacts fixture','mode':'demo'},headers=HEADERS).json()['id']
+        wait_status(client,run)
+        root=app.state.manager.runs._path(run).parent
+        folder=root/'steps'/'downloads';folder.mkdir(parents=True)
+        (folder/'ticket.pdf').write_bytes(b'%PDF-test-document')
+        (root/'private.pdf').write_bytes(b'PRIVATE')
+        image=root/'steps'/'payment.png';image.write_bytes(b'fixture-image')
+        outside=tmp_path/'outside.png';outside.write_bytes(b'PRIVATE-OUTSIDE')
+        atomic_json(root/'handoff.json',{'image-request':{'id':'image-request','kind':'external_approval',
+                    'text':'Fictional payment only','status':'pending','deadline':time.time()+120,
+                    'attachments':[str(image),str(outside),str(root/'state.json'),'https://example.test/image.png']}})
+        detail=client.get('/api/sessions/'+run).json()
+        assert detail['downloads']==['steps/downloads/ticket.pdf']
+        assert detail['requests'][0]['attachments']==['steps/payment.png']
+        response=client.get('/api/sessions/'+run+'/artifacts/steps/downloads/ticket.pdf')
+        assert response.content==b'%PDF-test-document'
+        assert response.headers['content-type']=='application/pdf'
+        assert 'attachment;' in response.headers['content-disposition']
+        assert client.get('/api/sessions/'+run+'/artifacts/private.pdf').status_code==404
+        assert client.get('/api/sessions/'+run+'/artifacts/state.json').status_code==404
+
+
+def test_installed_browser_channel_is_explicit_configuration(tmp_path,monkeypatch):
+    monkeypatch.setenv('BROWSER_CHANNEL','chrome')
+    monkeypatch.setenv('DATA_DIR',str(tmp_path/'data'))
+    cfg=Settings.from_env(env_file=tmp_path/'absent.env')
+    assert cfg.browser_channel=='chrome'
+    assert cfg.runtime(demo=True)['browser']['channel']=='chrome'
+
+
 async def test_cron_recurrence_keeps_india_timezone(tmp_path):
     from zoneinfo import ZoneInfo
     zone=ZoneInfo('Asia/Kolkata')

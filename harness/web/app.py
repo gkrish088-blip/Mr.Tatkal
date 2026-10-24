@@ -258,9 +258,12 @@ def create_app(settings=None, runner=None):
         manager.store.get(run_id)
         root=manager.runs._path(run_id).parent.resolve();target=(root/filename).resolve()
         allowed=target.suffix.lower() in {'.png','.jpg','.jpeg'} or filename in {'replay.html','summary.md','run.jsonl'}
+        document=target.suffix.lower()=='.pdf' and target.parent==root/'steps'/'downloads'
+        allowed=allowed or document
         if not target.is_relative_to(root) or not target.is_file() or not allowed:
             raise HTTPException(404,'Artifact not found')
-        return FileResponse(target)
+        return FileResponse(target, filename=target.name if document else None,
+                            media_type='application/pdf' if document else None)
 
     @app.get('/api/schedules')
     async def schedules(): return list(scheduler.jobs().values())

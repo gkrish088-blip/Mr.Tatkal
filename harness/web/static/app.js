@@ -65,6 +65,8 @@ async function renderDetail(){
   const problem=s.error||s.blocked_reason;
   $('session-error').hidden=!problem;$('session-error').textContent=problem||'';
   $('conversation').innerHTML=(s.messages||[]).map(m=>`<div class="message ${m.role==='assistant'?'assistant':'user'}"><strong>${m.role==='assistant'?'Agent':'You'}</strong><div>${esc(m.text)}</div></div>`).join('');
+  $('download-list').hidden=!(s.downloads||[]).length;
+  $('download-list').innerHTML=(s.downloads||[]).map(path=>`<a class="secondary small" href="${esc(artifactUrl(s.id,path))}" download>Download ${esc(path.split('/').pop().replace(/^[a-f0-9]{32}-/,''))}</a>`).join('');
   $('followup-form').hidden=s.mode!=='agent'||!['completed','blocked','failed','cancelled','limit_reached'].includes(s.status)||s.pending_action;
   $('replay-link').hidden=!s.has_replay;$('replay-link').href=artifactUrl(s.id,'replay.html');
   let screenshot=[...s.events].reverse().find(e=>e.after?.screenshot)?.after.screenshot;
@@ -80,7 +82,9 @@ async function renderDetail(){
   if(req && box.dataset.request!==req.id){
     box.dataset.request=req.id;
     const approve=['approve','external_approval'].includes(req.kind);
+    const images=(req.attachments||[]).map(path=>`<a href="${esc(artifactUrl(s.id,path))}" target="_blank" rel="noopener"><img class="handoff-image" src="${esc(artifactUrl(s.id,path))}" alt="Image supplied with this handoff"></a>`).join('');
     box.innerHTML=`<p><strong>${s.mode==='demo'?'LOCAL TEST APPROVAL':'HUMAN HANDOFF'}</strong></p><p>${esc(req.text)}</p>${s.mode==='demo'?'<p>This approves a fictional payment only. No money is moved.</p>':''}<div class="handoff-actions">${approve?`<button class="primary small" data-reply="approve" data-request="${req.id}">Approve ${s.mode==='demo'?'test':''}</button><button class="secondary small" data-reply="deny" data-request="${req.id}">Deny</button>`:req.kind==='choose'?req.options.map(o=>`<button class="secondary small" data-reply="${esc(o)}" data-request="${req.id}">${esc(o)}</button>`).join(''):`<input id="handoff-answer" aria-label="Reply to agent" placeholder="Your reply"><button class="primary small" data-reply-text="${req.id}">Send</button>`}</div>`;
+    if(images)box.querySelector('.handoff-actions').insertAdjacentHTML('beforebegin',`<div class="handoff-images">${images}</div>`);
   }else if(!req){box.dataset.request='';}
 }
 async function refresh(){
