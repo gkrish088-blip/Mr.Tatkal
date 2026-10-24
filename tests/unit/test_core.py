@@ -82,6 +82,43 @@ async def test_stuck_guard_is_bounded(tmp_path):
     assert state.step < 12
 
 
+async def test_permission_denial_stops_batch_before_shell_workaround(tmp_path):
+    calls = []
+    class Planner:
+        async def decide(self, *args):
+            calls.append('model')
+            return Decision('Open the requested website', [ToolCall('navigate'), ToolCall('shell')])
+    eng, state = engine(tmp_path, Planner())
+    async def navigate():
+        raise PermissionError('Host is not in the configured browser allowlist')
+    async def shell():
+        calls.append('shell')
+        return {}
+    eng.registry.register('navigate', navigate)
+    eng.registry.register('shell', shell)
+    result = await eng.run(state)
+    assert result.status == 'blocked' and result.step == 1
+    assert calls == ['model']
+    assert 'configuration required' in result.blocked_reason
+    assert 'allowlist' in result.blocked_reason
+    assert not result.pending_action
+    restored = eng.store.load(state.run_id)
+    assert restored.status == 'blocked' and restored.blocked_reason == result.blocked_reason
+    assert restored.history[-1]['result']['data']['error_code'] == 'permission_denied'
+
+
+async def test_transient_tool_failure_still_allows_recovery(tmp_path):
+    decisions = iter([Decision('Try the tool', [ToolCall('transient')]),
+                      Decision('Report the failure', [], True, 'The request failed; retry later.')])
+    class Planner:
+        async def decide(self, *args): return next(decisions)
+    eng, state = engine(tmp_path, Planner())
+    async def transient(): raise RuntimeError('Temporary service unavailable')
+    eng.registry.register('transient', transient)
+    assert (await eng.run(state)).status == 'completed'
+    assert 'request failed' in state.answer
+
+
 async def test_model_failover_and_malformed_repair(monkeypatch):
     monkeypatch.setenv('TEST_MODEL_KEY','dummy')
     calls=[]

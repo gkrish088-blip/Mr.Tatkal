@@ -25,7 +25,7 @@ class Engine:
             registry.register('append_skill_note', writer.append_note, 'Append a reusable lesson to a skill after observing a verified outcome; preserve its gates and procedure')
         registry.register("use_skill", self.use_skill, "Load a skill's full instructions", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]})
         if human:
-            registry.register("ask_human", self.ask_human, "Pause and ask the operator through the handoff channel", {"type": "object", "properties": {"kind": {"type": "string", "enum": ["text", "choose", "approve", "external_approval"]}, "text": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}, "timeout": {"type": "number"}}, "required": ["kind", "text"]})
+            registry.register("ask_human", self.ask_human, "Pause and ask the operator through the handoff channel", {"type": "object", "properties": {"kind": {"type": "string", "enum": ["text", "choose", "approve", "external_approval"]}, "text": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}, "attachments": {"type": "array", "items": {"type": "string"}}, "timeout": {"type": "number"}}, "required": ["kind", "text"]})
             if getattr(human, 'transport', None):
                 registry.register('notify_human', self.notify_human, 'Send a result and current screenshot through the configured operator channel without requesting a reply')
 
@@ -141,6 +141,11 @@ class Engine:
         state.pending_action = None
         state.active_skills = [s.name for s in self.active]
         state.status = "rejected" if state.status == "rejected" else "running"
+        if result.data.get('requires_operator'):
+            state.status = 'blocked'
+            state.blocked_reason = self.log.redactor.redact(
+                'Operator configuration required. ' + (result.error or 'Tool permission denied.') +
+                ' Update the configuration and restart; do not bypass this restriction with another tool.')
         self.store.save(state)
         return result
 
@@ -182,7 +187,7 @@ class Engine:
                 break
             for call in decision.calls:
                 result = await self.act(state, call, decision.reason)
-                if state.status in {"rejected", "limit_reached", "needs_reconciliation"}:
+                if state.status in {"blocked", "rejected", "limit_reached", "needs_reconciliation"}:
                     break
                 key = json.dumps(asdict(call), sort_keys=True)
                 self.failures[key] = 0 if result.ok else self.failures.get(key, 0)+1

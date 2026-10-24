@@ -61,5 +61,8 @@ class ToolRegistry:
             fn = self.tools[call.name][0]
             result = await fn(**call.arguments)
             return result if isinstance(result, ToolResult) else ToolResult(True, result or {})
+        except PermissionError as exc:
+            return ToolResult(False, {'requires_operator': True, 'error_code': 'permission_denied'},
+                              f'PermissionError: {exc}')
         except Exception as exc:
             return ToolResult(False, error=f"{type(exc).__name__}: {exc}")
