@@ -32,3 +32,5 @@ Observed signed-in landmark, or explicit statement that login was not verified.
 
 ## Field notes
 The reported 66-action attempt had a localhost-only allowlist and repeated shell networking. Watching-human probes on 2026-10-25 IST received service edge errors in Chromium and installed Chrome before credentials were submitted. Local passes are not live login evidence.
+
+2026-10-25 live demo findings (1280x800 viewport): the host allowlist must include maxcdn.bootstrapcdn.com, cdn.jsdelivr.net and fonts.gstatic.com or the page renders without styling and the login menu disappears. After load, a language modal may appear: click English (about x=670,y=624) ONCE; then click the hamburger (about x=1241,y=115); then LOGIN / REGISTER (about x=1096,y=45). Use coordinate clicks from a fresh screenshot; DOM refs time out on the beta banner. Do not repeat a click that already succeeded.
